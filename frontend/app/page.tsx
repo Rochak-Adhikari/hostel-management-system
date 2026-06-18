@@ -39,7 +39,7 @@ export default function LandingPage() {
             Log In
           </Link>
           <Link
-            href="/signup"
+            href="/register"
             className="w-[132px] h-[49px] flex items-center justify-center bg-black rounded-[5px] text-2xl font-normal text-white hover:bg-black/80 transition-colors"
           >
             Sign Up
@@ -72,7 +72,7 @@ export default function LandingPage() {
           
           <div className="flex gap-6 mb-16">
             <Link
-              href="/signup"
+              href="/register"
               className="w-[235px] h-[66px] flex items-center justify-center bg-black rounded-[10px] text-white text-[21px] font-bold hover:bg-black/80 transition-colors"
             >
               Apply For Admission
@@ -200,7 +200,7 @@ export default function LandingPage() {
               initials: "AS",
               name: "Aarav Sharma",
               course: "BSc CSIT, 2nd year",
-              quote: '" The fee tracking is super helpful — my parents can check if I\'ve paid without calling me every month. Makes life easier for everyone.',
+              quote: '"   The fee tracking is super helpful — my parents can check if I\'ve paid without calling me every month. Makes life easier for everyone.',
             },
             {
               initials: "PT",
@@ -326,7 +326,7 @@ export default function LandingPage() {
               <Link href="#facilities" className="hover:opacity-70">Facilities</Link>
               <Link href="#fees"       className="hover:opacity-70">Fee structure</Link>
               <Link href="#contact"    className="hover:opacity-70">Contact</Link>
-              <Link href="/signup"     className="hover:opacity-70">Apply now</Link>
+              <Link href="/register"     className="hover:opacity-70">Apply now</Link>
             </div>
           </div>
 
@@ -335,7 +335,7 @@ export default function LandingPage() {
             <p className="text-[30px] font-bold mb-4">Portals</p>
             <div className="flex flex-col gap-2 text-[26px] font-normal leading-9.75">
               <Link href="/login"  className="hover:opacity-70">Student login</Link>
-              <Link href="/signup" className="hover:opacity-70">Student sign up</Link>
+              <Link href="/register" className="hover:opacity-70">Student sign up</Link>
               <Link href="/login"  className="hover:opacity-70">Guardian login</Link>
             </div>
           </div>
