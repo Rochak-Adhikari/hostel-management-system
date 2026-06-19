@@ -28,7 +28,6 @@ export default function SignupPage() {
           Sign up
         </h1> 
 
-        {/* ── YOUR DETAILS ── */}
         <p className="text-black text-base mb-3">Your Details</p>
 
         <div className="flex gap-4 mb-4">
@@ -40,14 +39,14 @@ export default function SignupPage() {
           {/* Phone */}
           <div className="flex-1">
             <input
-              type="tel"
+              type="phone"
               placeholder="Phone Number"
               className="w-full h-9 border border-black rounded-md px-3 text-base text-black/80 outline-none focus:ring-1 focus:ring-black"
             />
           </div>
         </div>
 
-        {/* Email — full width */}
+    
         <div className="mb-4">
           <input
             type="email"
@@ -57,7 +56,7 @@ export default function SignupPage() {
         </div>
 
         <div className="flex gap-4 mb-6">
-          {/* Password */}
+        
           <div className="flex-1">
             <input
               type="password"
@@ -65,7 +64,7 @@ export default function SignupPage() {
               className="w-full h-9 border border-black rounded-md px-3 text-base text-black/80 outline-none focus:ring-1 focus:ring-black"
             />
           </div>
-          {/* Re-type password */}
+         
           <div className="flex-1">
             <input
               type="password"
@@ -79,7 +78,7 @@ export default function SignupPage() {
         <p className="text-black text-base mb-3">Guardian Details</p>
 
         <div className="flex gap-4 mb-4">
-          {/* Guardian name */}
+ 
           <div className="flex-1">
             <input
               type="text"
@@ -87,10 +86,10 @@ export default function SignupPage() {
               className="w-full h-9 border border-black rounded-md px-3 text-base text-black/80 outline-none focus:ring-1 focus:ring-black"
             />
           </div>
-          {/* Guardian phone */}
+          
           <div className="flex-1">
             <input
-              type="tel"
+              type="phone"
               placeholder="Guardian Phone Number"
               className="w-full h-9 border border-black rounded-md px-3 text-base text-black/80 outline-none focus:ring-1 focus:ring-black"
             />
