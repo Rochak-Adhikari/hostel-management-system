@@ -3,6 +3,10 @@ import connectDB from "./config/db";
 import cors from "cors";
 import dotenv from "dotenv";
 
+//! Import Routes here
+import authRoutes from "./routes/authRoutes";
+import userRoutes from "./routes/studentRoutes";
+
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +25,15 @@ app.get("/", (req:Request, res:Response) => {
     message: "Welcome to HostelHub API" ,
   });  
 });
+//using middleware
+app.use(express.json({ limit: "10mb" }));
+
+ // using routes
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/users", userRoutes);
+
+
+
 //listen
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
