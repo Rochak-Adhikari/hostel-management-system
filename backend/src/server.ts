@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import connectDB from "./config/db";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -27,6 +27,15 @@ app.get("/", (req:Request, res:Response) => {
 });
 //using middleware
 app.use(express.json({ limit: "10mb" }));
+
+//auth middleware
+app.use((error:any, req:Request, res: Response, next:NextFunction)=>{
+  console.log("error handler");
+  console.log(error);
+  res.status(400).json({
+    message:error?.message || "Internal Server error"
+  })
+})
 
  // using routes
 app.use("/api/v1/auth", authRoutes);

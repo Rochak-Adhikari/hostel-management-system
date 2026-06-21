@@ -4,7 +4,7 @@
   "description": "HostelHub Backend API",
   "main": "src/server.js",
   "scripts": {
-    "dev": "ts-node-dev ./src/server.ts",
+    "dev": "ts-node-dev  --transpile-only --respawn ./src/server.ts",
     "start": "node ./build/server.js",
     "build": "tsc"
   },
