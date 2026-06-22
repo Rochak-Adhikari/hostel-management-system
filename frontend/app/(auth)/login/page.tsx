@@ -1,6 +1,6 @@
+"use client";
 import React from "react";
 import Image from "next/image";
-import Link from "next/link";
 import LoginForm from "@/components/form/login";
 export default function LoginPage() {
   return (
@@ -28,7 +28,7 @@ export default function LoginPage() {
                {/*form*/}
                <LoginForm />
         <p className="text-center text-black text-base mt-4">
-          Don't have an account?{" "}
+          Don't have an account?{""}
           <a href="/register" className="font-semibold underline">
             Sign up
           </a>

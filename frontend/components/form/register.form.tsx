@@ -1,4 +1,4 @@
-import { Input } from '@/ui/inputs/input'
+"use client";import { Input } from '@/ui/inputs/input'
 import React from 'react'
 
 export default function RegisterPage() {
