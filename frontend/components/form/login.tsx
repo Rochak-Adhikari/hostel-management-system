@@ -5,7 +5,8 @@ import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import { LoginSchema } from "@/schema/authschema";
 import { ILogin } from "@/types/authtype";
-
+import { useMutation } from "@tanstack/react-query";
+import axios from "axios";
 
 
 export default function LoginForm () {
@@ -19,12 +20,30 @@ export default function LoginForm () {
           resolver: yupResolver(LoginSchema),
          })
 
-         console.log(errors)
+         //mutaition function
+
+         const login = async (data: ILogin) => {
+          try{
+
+            const response = await axios.post('http://localhost:8080/api/v1/auth/login', data)
+            console.log(response.data)
+            return response.data
+            
+          }
+          catch(error){
+            throw error
+          }
+         }
+
+          const {mutate, isPending} = useMutation({
+            mutationFn: login
+          })
 
           //onSubmit ma yo function call garxa
-         const onSubmit = (data: ILogin) => {
+         const onSubmit =  async (data: ILogin) => {
           console.log(data)
-           
+          mutate(data) 
+
          }
          
 
@@ -67,10 +86,11 @@ export default function LoginForm () {
         </div >
       <button
       type="submit"
+      disabled={isPending}
       className="w-40 h-12 bg-black text-white rounded-md text-base font-medium hover:bg-black/90 transition-colors justify-center mx-auto text-center items-center flex-col flex">
           LOG IN
         </button>
-
+          
         </form>
     )
     
