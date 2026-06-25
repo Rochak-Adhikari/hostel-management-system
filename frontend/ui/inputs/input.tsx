@@ -8,8 +8,8 @@ type IProps = {
   type?: "text" | "password" | "email"| "phone" | "number";
   placeholder?: string,
   required?: boolean,
-  name: string,
-  register:UseFormRegister<any>,
+  name?: string,
+  register?:UseFormRegister<any>,
   error?:string
 };
 
@@ -38,7 +38,7 @@ export const Input: FC<IProps> = ({
       <input
         id={id}
         type={type}
-        {...register(name)}
+         {...(register && name ? register(name) : {})} 
         placeholder={placeholder}
        className={`w-full h-9 border ${error ? 'border-red-500' : 'border-black'}
         rounded-md px-3 text-base text-black/80 outline-none focus:ring-1 focus:ring-black`}

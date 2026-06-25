@@ -2,9 +2,7 @@
 import React from "react";
 import Image from "next/image";
 import LoginForm from "@/components/form/login";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const queryClient = new QueryClient();
 export default function LoginPage() {
   return (
    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 py-12 font-poppins">
@@ -29,10 +27,10 @@ export default function LoginPage() {
         </h1> 
 
                {/*form*/}
-               <QueryClientProvider client={queryClient}>
+               
 
                <LoginForm />
-               </QueryClientProvider>
+               
         <p className="text-center text-black text-base mt-4">
           Don't have an account?{""}
           <a href="/register" className="font-semibold underline">

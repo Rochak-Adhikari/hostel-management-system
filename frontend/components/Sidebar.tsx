@@ -16,13 +16,13 @@ import {
 } from "lucide-react";
 
 const navLinks = [
-  { name: "Dashboard", href: "/dashboard", icon: Home },
-  { name: "My Profile", href: "/my-profile", icon: User },
-  { name: "My Room", href: "/my-room", icon: Bed },
-  { name: "Fee & Payments", href: "/fees", icon: CreditCard },
-  { name: "My Complaints", href: "/complaints", icon: MessageSquareWarning },
-  { name: "Notices", href: "/notices", icon: Bell },
-  { name: "Visitor Log", href: "/visitor-log", icon: Users },
+  { name: "Dashboard", href: "/student/dashboard", icon: Home },
+  { name: "My Profile", href: "/student/my-profile", icon: User },
+  { name: "My Room", href: "/student/my-room", icon: Bed },
+  { name: "Fee & Payments", href: "/student/fees", icon: CreditCard },
+  { name: "My Complaints", href: "/student/complaints", icon: MessageSquareWarning },
+  { name: "Notices", href: "/student/notices", icon: Bell },
+  { name: "Visitor Log", href: "/student/visitor-log", icon: Users },
 ];
 
 export default function Sidebar() {

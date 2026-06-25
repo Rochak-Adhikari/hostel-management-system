@@ -7,10 +7,10 @@ import { hashText, compareHash } from "../utils/bycrptutils";
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { full_name, email, phone, password, guardian } = req.body;
+    const { full_name, email, phone, password, guardian, confirm_password } = req.body;
 
     // validation
-    if (!full_name || !email || !phone || !password) {
+    if (!full_name || !email || !phone || !password || !confirm_password) {
       return res.status(400).json({
         message: "All fields are required",
         Code: "Validation Error",
@@ -25,6 +25,14 @@ export const register = async (req: Request, res: Response) => {
         status: "error",
       });
     }
+
+    if (password !== confirm_password) {
+  return res.status(400).json({
+    message: "Passwords do not match",
+    code: "Validation Error",
+    status: "error",
+  });
+}
 
     // guardian validation
     if (guardian) {
@@ -89,7 +97,7 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, } = req.body;
 
     // validation
     if (!email || !password) {
@@ -105,7 +113,7 @@ const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
       return res.status(401).json({
-        message: "Invalid credentials",
+        message: "EMAIL OR PASSWORD DOESN'T EXIST",
         code: "Auth error",
         status: "fail",
       });
@@ -124,7 +132,7 @@ const user = await User.findOne({ email }).select("+password");
 
     if (!isMatch) {
       return res.status(401).json({
-        message: "Invalid credentials",
+        message: "EMAIL OR PASSWORD DOESN'T MATCH",
         code: "Auth error",
         status: "fail",
       });
