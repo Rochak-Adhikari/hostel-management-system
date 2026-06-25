@@ -7,7 +7,7 @@ import { hashText, compareHash } from "../utils/bycrptutils";
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { full_name, email, phone, password, guardian, confirm_password } = req.body;
+    const { full_name, email, phone, password, guardian, confirm_password, role } = req.body;
 
     // validation
     if (!full_name || !email || !phone || !password || !confirm_password) {
@@ -55,6 +55,7 @@ export const register = async (req: Request, res: Response) => {
       email,
       phone,
       password: hashedPassword,
+      role,
       guardian: guardian || undefined,
     });
 
@@ -119,7 +120,7 @@ const user = await User.findOne({ email }).select("+password");
       });
     }
 
-    //  CHANGED: SAFE CHECK (prevents bcrypt crash)
+    
     if (!user.password) {
       return res.status(500).json({
         message: "User password missing in database",
@@ -127,7 +128,7 @@ const user = await User.findOne({ email }).select("+password");
       });
     }
 
-    // compare password
+    //  password compare garxa
     const isMatch = await compareHash(password, user.password);
 
     if (!isMatch) {
