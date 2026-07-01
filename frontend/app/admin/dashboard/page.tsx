@@ -46,10 +46,10 @@ const stats = [
 
 export default function DashboardPage() {
   return (
-    <div className="p-8 bg-[#F9F9F9] min-h-screen">
+    <div className="p-4 md:p-8 bg-[#F9F9F9] min-h-screen">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-4xl font-semibold">
+        <h1 className="text-2xl md:text-4xl font-semibold">
           Dashboard
         </h1>
 
@@ -59,7 +59,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4 mb-8">
         {stats.map((item) => {
           const Icon = item.icon;
 
@@ -81,7 +81,7 @@ export default function DashboardPage() {
               </p>
 
               <h2
-                className={`text-3xl font-semibold mt-2 ${
+                className={`text-2xl md:text-3xl font-semibold mt-2 ${
                   item.danger ? "text-red-600" : ""
                 }`}
               >
@@ -99,9 +99,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* Left Side */}
-        <div className="col-span-8 flex flex-col gap-6">
+        <div className="xl:col-span-8 flex flex-col gap-6 min-w-0">
           {/* Occupancy */}
           <div className="bg-white border rounded-xl p-6">
             <h2 className="text-xl font-semibold mb-4">
@@ -112,11 +112,11 @@ export default function DashboardPage() {
               <div className="w-[90%] h-full bg-black"></div>
             </div>
 
-            <p className="text-4xl font-bold mb-4">
+            <p className="text-2xl md:text-4xl font-bold mb-4">
               90%
             </p>
 
-            <div className="grid grid-cols-10 gap-2">
+            <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
               {Array.from({ length: 60 }).map((_, index) => (
                 <div
                   key={index}
@@ -132,7 +132,7 @@ export default function DashboardPage() {
 
           {/* Recent Payments */}
           <div className="bg-white border rounded-xl p-6">
-            <div className="flex justify-between mb-5">
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-2 mb-5">
               <h2 className="text-xl font-semibold">
                 Recent Fee Payments
               </h2>
@@ -142,57 +142,59 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3">
-                    Student
-                  </th>
-                  <th className="text-left py-3">
-                    Room
-                  </th>
-                  <th className="text-left py-3">
-                    Date
-                  </th>
-                  <th className="text-right py-3">
-                    Status
-                  </th>
-                </tr>
-              </thead>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px]">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3">
+                      Student
+                    </th>
+                    <th className="text-left py-3">
+                      Room
+                    </th>
+                    <th className="text-left py-3">
+                      Date
+                    </th>
+                    <th className="text-right py-3">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
 
-              <tbody>
-                <tr className="border-b">
-                  <td className="py-4">
-                    Rochak Sharma
-                  </td>
-                  <td>A-101</td>
-                  <td>June 15, 2026</td>
-                  <td className="text-right">
-                    <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm">
-                      Paid
-                    </span>
-                  </td>
-                </tr>
+                <tbody>
+                  <tr className="border-b">
+                    <td className="py-4">
+                      Rochak Sharma
+                    </td>
+                    <td>A-101</td>
+                    <td>June 15, 2026</td>
+                    <td className="text-right">
+                      <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm">
+                        Paid
+                      </span>
+                    </td>
+                  </tr>
 
-                <tr>
-                  <td className="py-4">
-                    Aayush Karki
-                  </td>
-                  <td>B-205</td>
-                  <td>June 14, 2026</td>
-                  <td className="text-right">
-                    <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm">
-                      Paid
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  <tr>
+                    <td className="py-4">
+                      Aayush Karki
+                    </td>
+                    <td>B-205</td>
+                    <td>June 14, 2026</td>
+                    <td className="text-right">
+                      <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm">
+                        Paid
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
         {/* Right Side */}
-        <div className="col-span-4 flex flex-col gap-6">
+        <div className="xl:col-span-4 flex flex-col gap-6 min-w-0">
           {/* Complaints */}
           <div className="bg-white border rounded-xl p-6">
             <h2 className="text-xl font-semibold mb-4">

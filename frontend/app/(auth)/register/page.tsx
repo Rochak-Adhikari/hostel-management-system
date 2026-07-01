@@ -3,6 +3,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import RegisterPage from "@/components/form/register.form";
+import BackButton from "@/components/backbutton/back";
 
 export default function SignupPage() {
   return (
@@ -17,6 +18,7 @@ export default function SignupPage() {
           border: "2px solid #fff",
         }}
       >
+         <BackButton />
           {/* Logo above card */}
       <div className="mb-4">
         <Image

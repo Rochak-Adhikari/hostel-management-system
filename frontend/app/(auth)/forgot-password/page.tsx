@@ -3,6 +3,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import ForgotPassword from "@/components/form/forgot";
+import BackButton from "@/components/backbutton/back";
 
 export default function ForgotPasswordPage() {
   return (
@@ -15,7 +16,7 @@ export default function ForgotPasswordPage() {
           border: "2px solid #fff",
         }}
       >
-        
+        <BackButton />
       <div className="mb-4">
         <Image
           src="/assets/logo.png"

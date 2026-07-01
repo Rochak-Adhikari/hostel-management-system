@@ -7,13 +7,13 @@ export default function DashboardPage() {
       <h1 className="text-2xl font-medium mb-4">Dashboard</h1>
 
      
-      <div className="bg-[#00C0E8]/30 rounded-[25px] px-6 py-5 mb-6 max-w-[481px]">
+      <div className="bg-[#00C0E8]/30 rounded-[25px] px-6 py-5 mb-6 w-full max-w-[481px]">
         <p className="text-xl font-bold mb-1">Welcome Back, Rochak! 👋</p>
         <p className="text-[15px]">Here is what&apos;s going on your hostel today!</p>
       </div>
 
       
-      <div className="grid grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
       
         <div className="bg-white rounded-[15px] shadow-[5px_4px_4px_2px_rgba(0,0,0,0.50),inset_5px_4px_4px_2px_rgba(0,0,0,0.25)] p-5">
           <div className="flex items-center gap-3 mb-2">
@@ -23,7 +23,7 @@ export default function DashboardPage() {
             <p className="text-[15px] font-semibold">Room Number</p>
           </div>
           <p className="text-xl font-semibold mb-2">A-001</p>
-          <a href="/my-room" className="text-blue-600 text-sm font-medium underline">
+          <a href="/student/my-room" className="text-blue-600 text-sm font-medium underline">
             view room details ↗
           </a>
         </div>
@@ -49,7 +49,7 @@ export default function DashboardPage() {
             <p className="text-[15px] font-semibold">Complaints</p>
           </div>
           <p className="text-xl font-semibold text-[#CB30E0] mb-2">Complaint</p>
-          <a href="/complaints" className="text-blue-600 text-sm font-medium underline">
+          <a href="/student/complaints" className="text-blue-600 text-sm font-medium underline">
             view Complaints ↗
           </a>
         </div>
@@ -58,8 +58,8 @@ export default function DashboardPage() {
       {/* NoticeS */}
       <div className="bg-white rounded-[15px] shadow-[5px_4px_4px_2px_rgba(0,0,0,0.50),inset_5px_4px_4px_2px_rgba(0,0,0,0.25)] p-6 pb-10">
         <h2 className="text-2xl font-bold mb-5 text-center">Notices</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="border border-black rounded-[25px] p-5 min-h-[110px] flex items-start justify-between">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="border border-black rounded-[25px] p-5 min-h-[110px] flex flex-col sm:flex-row items-start justify-between gap-3">
             <div>
               <p className="font-semibold text-lg mb-2">Visitor Timing Update</p>
               <p className="text-sm">visitor hours have been revised to:</p>

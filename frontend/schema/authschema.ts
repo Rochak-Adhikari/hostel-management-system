@@ -11,9 +11,13 @@ export const RegisterSchema = yup.object({
   phone: yup.string().required('Phone number is required'),
   password: yup.string().required('Password is required'),
   confirm_password: yup.string().required('Confirm password is required'),
-   guardian: yup.object({
+  guardian: yup.object({
     name: yup.string().required('Guardian name is required'),
     phone: yup.string().required('Guardian phone is required'),
     email: yup.string().email().required('Guardian email is required'),
-  })
+  }),
+})
+
+export const ForgotPasswordSchema = yup.object({
+  email: yup.string().email('Enter a valid email').required('Email is required'),
 })
