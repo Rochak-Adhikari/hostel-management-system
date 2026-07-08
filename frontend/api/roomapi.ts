@@ -7,6 +7,8 @@ export const getAllRooms = async () => {
     return response.data;
 };
 
+
+
 export const getRoomById = async (id: string) => {
     const response = await axios.get(`${BASE_URL}/${id}`);
     return response.data;

@@ -25,13 +25,13 @@ export default function LoginForm () {
           resolver: yupResolver(LoginSchema),
          })
 
-         //mutaition function
-
         
 
           const {mutate, isPending, error, isError} = useMutation({
             mutationFn: login,
              onSuccess: (data) => {
+              const user =data.data;
+               localStorage.setItem('user', JSON.stringify(user));
                const role = data.data.role;
                if (role === 'student') router.push('/student/dashboard');
                else if (role === 'admin') router.push('/admin/dashboard');

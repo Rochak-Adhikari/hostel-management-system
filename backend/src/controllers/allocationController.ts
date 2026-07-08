@@ -99,6 +99,29 @@ export const createAllocation = async (req: Request, res: Response, next: NextFu
   }
 };
 
+// student ko id ko basis ma tesko allocation (room) fetch garna ko lagi
+export const getAllocationByStudent = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { studentId } = req.params;
+
+    const allocation = await Allocation.findOne({ student: studentId });
+
+    if (!allocation) {
+      throw new AppError("No room allocated to this student", 404, ErrorCodes.ALLOCATION_NOT_FOUND);
+    }
+
+    return res.status(200).json({
+      message: "Allocation Fetched Successfully",
+      code: "success",
+      status: "success",
+      data: allocation,
+    });
+
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
 // Sabai allocation fetch garna ko lagi
 export const getALLAllocations = async (req: Request, res: Response, next: NextFunction) => {
   try {

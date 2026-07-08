@@ -7,6 +7,11 @@ export const getAllAllocations = async () => {
     return response.data;
 };
 
+export const getAllocationByStudent = async (studentId: string) => {
+  const response = await axios.get(`${BASE_URL}/student/${studentId}`);
+  return response.data;
+};
+
 export const getAllocationById = async (id: string) => {
     const response = await axios.get(`${BASE_URL}/${id}`);
     return response.data;
