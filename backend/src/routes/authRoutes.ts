@@ -5,13 +5,13 @@ import { register, login } from "../controllers/authController";
 
 const router = express.Router();
 
-//register route
+//register ko route
 //? post , /api/v1/auth/register this is called endpoint
 
 router.post("/register", register);
 
 
-//login route
+//login ko route
 
 router.post("/login", login);
 

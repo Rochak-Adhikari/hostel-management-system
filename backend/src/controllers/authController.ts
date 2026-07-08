@@ -1,53 +1,56 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import User from "../models/user";
 import { hashText, compareHash } from "../utils/bycrptutils";
-
+import { AppError } from "../middleware/errorhandlermiddleware";
+import { ErrorCodes } from "../types/enum";
 
 // REGISTER
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { full_name, email, phone, password, guardian, confirm_password, role } = req.body;
 
     // validation
     if (!full_name || !email || !phone || !password || !confirm_password) {
-      return res.status(400).json({
-        message: "All fields are required",
-        Code: "Validation Error",
-        status: "error",
-      });
+
+
+      throw new AppError(
+        "All fields are required",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
     }
 
     if (password.length < 6) {
-      return res.status(400).json({
-        message: "Password must be at least 6 characters long",
-        Code: "Validation Error",
-        status: "error",
-      });
+      throw new AppError(
+        "Password must be at least 6 characters long",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
     }
 
     if (password !== confirm_password) {
-  return res.status(400).json({
-    message: "Passwords do not match",
-    code: "Validation Error",
-    status: "error",
-  });
-}
+      throw new AppError(
+        "Password and confirm password do not match",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
 
-    // guardian validation
+    // guardian ko validation
     if (guardian) {
       const { name, phone: guardianPhone, email: guardianEmail } = guardian;
 
       if (!name || !guardianPhone || !guardianEmail) {
-        return res.status(400).json({
-          message: "All guardian details are required",
-          Code: "Validation Error",
-          status: "error",
-        });
+        throw new AppError(
+          "Guardian name, phone, and email are required",
+          400,
+          ErrorCodes.VALIDATION_ERROR
+        );
       }
     }
 
-    //  CHANGED: hash BEFORE saving (cleaner + safer flow)
+    // password hashing garna ko lagi
     const hashedPassword = await hashText(password);
 
     const user = new User({
@@ -63,7 +66,7 @@ export const register = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       message: "User registered successfully",
-      Code: "Success",
+      code: "success",
       status: "success",
       data: {
         id: user._id,
@@ -75,68 +78,67 @@ export const register = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
+
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern || {})[0];
 
-      return res.status(400).json({
-        message: `${field} already exists`,
-        Code: "Duplicate Error",
-        status: "error",
-      });
+      return next(
+        new AppError(
+          `Account with this ${field} already exists`,
+          400,
+          ErrorCodes.ACCOUNT_ALREADY_EXISTS
+        )
+      );
     }
 
-    return res.status(500).json({
-      message: error.message || "Internal server error",
-      Code: "Server Error",
-      status: "error",
-    });
+    return next(error);
   }
 };
 
 
 // LOGIN
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password, } = req.body;
+    const { email, password } = req.body;
 
     // validation
     if (!email || !password) {
-      return res.status(400).json({
-        message: "Email and password are required",
-        Code: "Validation Error",
-        status: "error",
-      });
+      throw new AppError(
+        "Email and password are required",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
     }
 
     // find user
-const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
-      return res.status(401).json({
-        message: "EMAIL OR PASSWORD DOESN'T EXIST",
-        code: "Auth error",
-        status: "fail",
-      });
+      throw new AppError(
+        "User not found",
+        404,
+        ErrorCodes.NOT_FOUND
+      );
     }
 
-    
     if (!user.password) {
-      return res.status(500).json({
-        message: "User password missing in database",
-        status: "error",
-      });
+      throw new AppError(
+        "Password not set for this user",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
     }
 
-    //  password compare garxa
+    // password compare garxa
     const isMatch = await compareHash(password, user.password);
 
     if (!isMatch) {
-      return res.status(401).json({
-        message: "EMAIL OR PASSWORD DOESN'T MATCH",
-        code: "Auth error",
-        status: "fail",
-      });
+      throw new AppError(
+        "Email or password does not match",
+        401,
+        ErrorCodes.INVALID_CREDENTIALS
+      );
     }
 
     return res.status(200).json({
@@ -152,9 +154,6 @@ const user = await User.findOne({ email }).select("+password");
     });
 
   } catch (error: any) {
-    return res.status(500).json({
-      message: error.message || "Internal server error",
-    });
+    return next(error);
   }
 };
-
