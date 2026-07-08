@@ -11,6 +11,8 @@ export const RegisterSchema = yup.object({
   phone: yup.string().required('Phone number is required'),
   password: yup.string().required('Password is required'),
   confirm_password: yup.string().required('Confirm password is required'),
+  gender: yup.string().required('Gender is required'),
+  address: yup.string().required('Address is required'),
   guardian: yup.object({
     name: yup.string().required('Guardian name is required'),
     phone: yup.string().required('Guardian phone is required'),

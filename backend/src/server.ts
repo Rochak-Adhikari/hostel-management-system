@@ -2,14 +2,19 @@ import express, { NextFunction, Request, Response } from "express";
 import connectDB from "./config/db";
 import cors from "cors";
 import dotenv from "dotenv";
-import { ENV_CONFIG } from "./config/env.config";
+
+
 import { AppError, errorHandler } from "./middleware/errorhandlermiddleware"; 
+import {ErrorCodes} from "./types/enum";
+
 
 //! routes ko import haru
 import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/studentRoutes";
-import e from "express";
-import { from } from "node:stream/iter";
+import roomRoutes from "./routes/roomRoutes";
+import allocationRoutes from "./routes/allocationRoutes";
+
+
 
 dotenv.config();
 const app = express();
@@ -21,7 +26,8 @@ connectDB();
 
 
 app.use(cors());
-
+//using middleware
+app.use(express.json({ limit: "10mb" }));
 
 //root ko route
 app.get("/", (req:Request, res:Response) => {  
@@ -29,25 +35,26 @@ app.get("/", (req:Request, res:Response) => {
     message: "Server is up and running" ,
   });  
 });
-//using middleware
-app.use(express.json({ limit: "10mb" }));
+
 
 
 
  // using routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/rooms", roomRoutes);
+app.use("/api/v1/allocations", allocationRoutes);
+
 
 // path not found error ko lagi
 app.use(( req:Request, res:Response, next:NextFunction)=>{
   
  
   const message = `Cannot ${req.method} on ${req.url}`;
-  // const error:any = new Error(message)
-  // error.statusCode = 404;
-  // error.code = "Not Found";
-  // error.status = "fail";
- const error:any = AppError(message, 404, ErrorCodes.NOT_FOUND);
+
+ const error= new AppError(
+  message, 404,
+   ErrorCodes.NOT_FOUND);
   next(error)
   
   }

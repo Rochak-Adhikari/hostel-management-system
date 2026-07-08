@@ -8,10 +8,10 @@ import { ErrorCodes } from "../types/enum";
 
 export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { full_name, email, phone, password, guardian, confirm_password, role } = req.body;
+    const { full_name, email, phone, password, guardian, confirm_password, role, gender, address } = req.body;
 
     // validation
-    if (!full_name || !email || !phone || !password || !confirm_password) {
+    if (!full_name || !email || !phone || !password || !confirm_password || !gender || !address) {
 
 
       throw new AppError(
@@ -37,6 +37,8 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       );
     }
 
+     
+
     // guardian ko validation
     if (guardian) {
       const { name, phone: guardianPhone, email: guardianEmail } = guardian;
@@ -59,6 +61,8 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       phone,
       password: hashedPassword,
       role,
+      gender,
+      address,
       guardian: guardian || undefined,
     });
 
@@ -73,6 +77,8 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
         full_name: user.full_name,
         email: user.email,
         phone: user.phone,
+        gender: user.gender,
+        address: user.address,
         guardian: user.guardian,
       },
     });

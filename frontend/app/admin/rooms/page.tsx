@@ -2,28 +2,30 @@
 
 import { useState } from "react";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getAllRooms, deleteRoom, createRoom, updateRoom as updateRoomApi } from "@/api/roomapi";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { RoomSchema } from "@/schema/roomschema";
+import * as yup from "yup";
 
+// yup schema bata form ko type nikalne (RoomNumber, Floor, RoomType, Capacity, Occupied, MonthlyFee)
+type RoomFormValues = yup.InferType<typeof RoomSchema>;
+
+// backend bata aaune Room document ko shape (yesma _id pani cha, MongoDB le auto generate garcha)
 type Room = {
-  id: string;
-  roomNumber: string;
-  floor: string;
-  roomType: string;
-  capacity: number;
-  occupied: number;
-  monthlyFee: number;
+  _id: string;
+  RoomNumber: string;
+  Floor: string;
+  RoomType: string;
+  Capacity: number;
+  Occupied: number;
+  MonthlyFee: number;
 };
 
-const initialRooms: Room[] = [
-  { id: "RM-001", roomNumber: "A-101", floor: "Ground", roomType: "Single", capacity: 1, occupied: 1, monthlyFee: 12000 },
-  { id: "RM-002", roomNumber: "A-102", floor: "Ground", roomType: "Double", capacity: 2, occupied: 2, monthlyFee: 9000 },
-  { id: "RM-003", roomNumber: "A-103", floor: "Ground", roomType: "Triple", capacity: 3, occupied: 2, monthlyFee: 7000 },
-  { id: "RM-004", roomNumber: "B-201", floor: "First", roomType: "Single", capacity: 1, occupied: 0, monthlyFee: 12000 },
-  { id: "RM-005", roomNumber: "B-205", floor: "First", roomType: "Double", capacity: 2, occupied: 2, monthlyFee: 9000 },
-  { id: "RM-006", roomNumber: "C-102", floor: "Ground", roomType: "Double", capacity: 2, occupied: 1, monthlyFee: 9000 },
-  { id: "RM-007", roomNumber: "C-201", floor: "First", roomType: "Triple", capacity: 3, occupied: 3, monthlyFee: 7000 },
-  { id: "RM-008", roomNumber: "D-301", floor: "Second", roomType: "Single", capacity: 1, occupied: 0, monthlyFee: 12000 },
-];
+type ModalMode = "add" | "edit" | null;
 
+// Occupied/Capacity ko basis ma "Occupied" ya "Available" badge dekhaune sano component
 function StatusPill({ status }: { status: string }) {
   return (
     <span
@@ -38,80 +40,130 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-type ModalMode = "add" | "edit" | null;
-
 export default function RoomsPage() {
-  const [rooms, setRooms] = useState<Room[]>(initialRooms);
+  // ── DATA FETCHING ──────────────────────────────────────────────────────
+  // sabai room haru backend bata fetch garna ko lagi (GET /api/v1/rooms)
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["rooms"],
+    queryFn: getAllRooms,
+  });
+
+  // backend le { message, code, status, data } pathaucha, tesaile data.data ma matra actual array huncha
+  const rooms: Room[] = data?.data ?? [];
+
+  // ── MODAL / SELECTION STATE ────────────────────────────────────────────
   const [modal, setModal] = useState<ModalMode>(null);
   const [selected, setSelected] = useState<Room | null>(null);
-  const [form, setForm] = useState<Partial<Room>>({});
 
+  // ── FORM (react-hook-form + yup validation) ───────────────────────────
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<RoomFormValues>({
+    resolver: yupResolver(RoomSchema),
+  });
+
+  // ── SUMMARY COUNTS ─────────────────────────────────────────────────────
   const totalRooms = rooms.length;
-  const occupiedRooms = rooms.filter((r) => r.occupied >= r.capacity).length;
-  const availableRooms = rooms.filter((r) => r.occupied < r.capacity).length;
+  const occupiedRooms = rooms.filter((r) => r.Occupied >= r.Capacity).length;
+  const availableRooms = rooms.filter((r) => r.Occupied < r.Capacity).length;
 
+  // ── MUTATIONS (Create / Update / Delete) ──────────────────────────────
+  const queryClient = useQueryClient();
+
+  // room delete garna ko lagi
+  const deleteMutation = useMutation({
+    mutationFn: deleteRoom,
+    onSuccess: () => {
+      // delete pachi "rooms" cache lai stale mani refetch garaune
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+    },
+  });
+
+  // naya room create garna ko lagi
+  const createMutation = useMutation({
+    mutationFn: createRoom,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      closeModal();
+    },
+     onError: (error: any) => {
+    alert(error?.response?.data?.message ?? "Something went wrong.");
+  },
+  });
+
+  // existing room update garna ko lagi
+  // updateRoomApi lai id ra data dubai chaine bhaye pani, mutate() le euta matra argument dincha,
+  // tesaile euta object { id, data } ko form ma wrap garya
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Room> }) =>
+      updateRoomApi(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      closeModal();
+    },
+  });
+
+  // ── MODAL HELPERS ──────────────────────────────────────────────────────
+
+  // "Add Room" button click garda modal add mode ma khulcha, form khali huncha
   function openAdd() {
-    setForm({});
+    reset();
     setSelected(null);
     setModal("add");
   }
 
+  // "Edit" button click garda modal edit mode ma khulcha, form ma existing room ko data prefill huncha
   function openEdit(r: Room) {
-    setForm({ ...r });
+    reset(r);
     setSelected(r);
     setModal("edit");
   }
 
+  // modal band garda form pani reset garne
   function closeModal() {
     setModal(null);
     setSelected(null);
-    setForm({});
+    reset();
   }
+
+  // ── ACTIONS ─────────────────────────────────────────────────────────────
 
   function handleDelete(id: string) {
     if (confirm("Delete this room record?")) {
-      setRooms((prev) => prev.filter((r) => r.id !== id));
+      deleteMutation.mutate(id);
     }
   }
 
-  function handleSave() {
+  // handleSubmit(handleSave) le yup validation pass vaye pachi matra yo function call garcha,
+  // ra validated data lai formData ko roop ma dincha - form state manually padhnu pardaina
+  function handleSave(formData: RoomFormValues) {
+    const payload = {
+      RoomNumber: formData.RoomNumber,
+      Floor: formData.Floor,
+      RoomType: formData.RoomType,
+      Capacity: Number(formData.Capacity),
+      Occupied: Number(formData.Occupied ?? 0),
+      MonthlyFee: Number(formData.MonthlyFee),
+    };
+
     if (modal === "add") {
-      const newId = `RM-${String(rooms.length + 1).padStart(3, "0")}`;
-      setRooms((prev) => [
-        ...prev,
-        {
-          ...(form as Room),
-          id: newId,
-          capacity: Number(form.capacity),
-          occupied: Number(form.occupied ?? 0),
-          monthlyFee: Number(form.monthlyFee),
-        },
-      ]);
+      createMutation.mutate(payload);
     } else if (modal === "edit" && selected) {
-      setRooms((prev) =>
-        prev.map((r) =>
-          r.id === selected.id
-            ? {
-                ...r,
-                ...form,
-                capacity: Number(form.capacity),
-                occupied: Number(form.occupied),
-                monthlyFee: Number(form.monthlyFee),
-              }
-            : r
-        )
-      );
+      updateMutation.mutate({ id: selected._id, data: payload });
     }
-    closeModal();
   }
 
-  const formFields = [
-    { key: "roomNumber", label: "Room Number", placeholder: "e.g. A-101" },
-    { key: "floor", label: "Floor", placeholder: "e.g. Ground / First" },
-    { key: "roomType", label: "Room Type", placeholder: "Single / Double / Triple" },
-    { key: "capacity", label: "Capacity", placeholder: "Max occupants" },
-    { key: "occupied", label: "Currently Occupied", placeholder: "Current count" },
-    { key: "monthlyFee", label: "Monthly Fee (Rs.)", placeholder: "e.g. 12000" },
+  // modal ma dekhine input fields ko list (label + placeholder + register key)
+  const formFields: { key: keyof RoomFormValues; label: string; placeholder: string }[] = [
+    { key: "RoomNumber", label: "Room Number", placeholder: "e.g. A-101" },
+    { key: "Floor", label: "Floor", placeholder: "e.g. Ground / First" },
+    { key: "RoomType", label: "Room Type", placeholder: "Single / Double / Triple" },
+    { key: "Capacity", label: "Capacity", placeholder: "Max occupants" },
+    { key: "Occupied", label: "Currently Occupied", placeholder: "Current count" },
+    { key: "MonthlyFee", label: "Monthly Fee (Rs.)", placeholder: "e.g. 12000" },
   ];
 
   return (
@@ -130,6 +182,14 @@ export default function RoomsPage() {
           Add Room
         </button>
       </div>
+
+      {/* Loading / Error states - backend bata data aaudai garda samma ko lagi  loading rooms dekhauney kam garxa*/}
+      {isPending && (
+        <p className="text-sm text-gray-500">Loading rooms...</p>
+      )}
+      {isError && (
+        <p className="text-sm text-red-500">Failed to load rooms. Please try again.</p>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -166,15 +226,16 @@ export default function RoomsPage() {
             </thead>
             <tbody>
               {rooms.map((r) => {
-                const status = r.occupied >= r.capacity ? "Occupied" : "Available";
+                // capacity bhanda occupied badi ya barabar vaye "Occupied", hoina vaye "Available"
+                const status = r.Occupied >= r.Capacity ? "Occupied" : "Available";
                 return (
-                  <tr key={r.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                    <td className="py-4 px-5 text-sm font-semibold">{r.roomNumber}</td>
-                    <td className="py-4 px-5 text-sm text-gray-500">{r.floor}</td>
-                    <td className="py-4 px-5 text-sm text-gray-500">{r.roomType}</td>
-                    <td className="py-4 px-5 text-sm text-gray-500">{r.capacity}</td>
-                    <td className="py-4 px-5 text-sm text-gray-500">{r.occupied} / {r.capacity}</td>
-                    <td className="py-4 px-5 text-sm font-medium">Rs. {r.monthlyFee.toLocaleString()}</td>
+                  <tr key={r._id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                    <td className="py-4 px-5 text-sm font-semibold">{r.RoomNumber}</td>
+                    <td className="py-4 px-5 text-sm text-gray-500">{r.Floor}</td>
+                    <td className="py-4 px-5 text-sm text-gray-500">{r.RoomType}</td>
+                    <td className="py-4 px-5 text-sm text-gray-500">{r.Capacity}</td>
+                    <td className="py-4 px-5 text-sm text-gray-500">{r.Occupied} / {r.Capacity}</td>
+                    <td className="py-4 px-5 text-sm font-medium">Rs. {r.MonthlyFee.toLocaleString()}</td>
                     <td className="py-4 px-5">
                       <StatusPill status={status} />
                     </td>
@@ -183,7 +244,7 @@ export default function RoomsPage() {
                         <button onClick={() => openEdit(r)} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 transition" title="Edit">
                           <Pencil size={14} />
                         </button>
-                        <button onClick={() => handleDelete(r.id)} className="p-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition" title="Delete">
+                        <button onClick={() => handleDelete(r._id)} className="p-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition" title="Delete">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -196,7 +257,7 @@ export default function RoomsPage() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal (Add / Edit) */}
       {modal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
@@ -208,6 +269,8 @@ export default function RoomsPage() {
                 <X size={18} />
               </button>
             </div>
+
+            {/* yaha <form> tag chaidaina, kina bhane Save button le nai handleSubmit(handleSave) call garcha */}
             <div className="p-6 grid grid-cols-2 gap-4">
               {formFields.map((field) => (
                 <div key={field.key}>
@@ -215,20 +278,28 @@ export default function RoomsPage() {
                   <input
                     type="text"
                     placeholder={field.placeholder}
-                    value={String((form as Record<string, unknown>)[field.key] ?? "")}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, [field.key]: e.target.value }))
-                    }
+                    {...register(field.key)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
                   />
+                  {/* yup schema le fail garya vane, field ko tala error message dekhaune */}
+                  {errors[field.key] && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors[field.key]?.message as string}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
+
             <div className="p-6 pt-0 flex gap-3 justify-end">
               <button onClick={closeModal} className="px-5 py-2 border border-gray-300 rounded-xl text-sm hover:bg-gray-50 transition">
                 Cancel
               </button>
-              <button onClick={handleSave} className="px-5 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-900 transition">
+              {/* handleSubmit(handleSave): pahila yup validation chalcha, pass vaye matra handleSave lai validated data pathaucha */}
+              <button
+                onClick={handleSubmit(handleSave)}
+                className="px-5 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-900 transition"
+              >
                 {modal === "add" ? "Add Room" : "Save Changes"}
               </button>
             </div>

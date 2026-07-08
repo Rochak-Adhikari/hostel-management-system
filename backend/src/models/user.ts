@@ -32,10 +32,10 @@ const userSchema = new mongoose.Schema(
 
     },
 
-    profile_picture: {
-      type: String,
-      default: "",
-    },
+  profile_picture: {
+  type: String,
+  default: "",
+},
 
     role: {
       type: String,
@@ -45,6 +45,19 @@ const userSchema = new mongoose.Schema(
       },
       default: Role.STUDENT,
     },
+
+ gender: {
+  type: String,
+  required: [true, "Gender is required"],
+  enum: ["male", "female", "other"],
+},
+
+address: {
+  type: String,
+  required: [true, "Address is required"],
+  trim: true,
+},
+    
 
     guardian: {
       name: {

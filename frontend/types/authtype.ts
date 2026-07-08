@@ -12,6 +12,8 @@ export type IRegister = {
   phone: string
   password: string
   confirm_password: string
+  gender: string
+  address: string
   guardian: {
     name: string
     phone: string

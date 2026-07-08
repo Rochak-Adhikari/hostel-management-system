@@ -21,6 +21,8 @@ export default function RegisterPage() {
       phone: "",
       password: "",
       confirm_password: "",
+      gender: "",
+      address: "",
       guardian: {
         name: "",
         phone: "",
@@ -90,6 +92,41 @@ export default function RegisterPage() {
           register={register}
           error={errors.email?.message}
         />
+      </div>
+
+      {/* Gender + Address - naya fields haru */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-4">
+        <div className="flex-1">
+          <label htmlFor="gender" className="block text-sm font-medium mb-1">
+            Gender
+          </label>
+          <select
+            id="gender"
+            required
+            {...register("gender")}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+          >
+            <option value="">Select Gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+          {errors.gender && (
+            <p className="text-red-500 text-xs mt-1">{errors.gender.message}</p>
+          )}
+        </div>
+        <div className="flex-1">
+          <Input
+            name="address"
+            label="Address"
+            id="address"
+            type="text"
+            placeholder="City, Nepal"
+            required
+            register={register}
+            error={errors.address?.message}
+          />
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
