@@ -1,50 +1,81 @@
+"use client";
+
 import {
   Users,
   BedDouble,
   CreditCard,
   AlertTriangle,
 } from "lucide-react";
-
-const stats = [
-  {
-    title: "Total Students",
-    value: "245",
-    subtitle: "+12 this month",
-    icon: Users,
-  },
-  {
-    title: "Total Rooms",
-    value: "120",
-    subtitle: "",
-    icon: BedDouble,
-  },
-  {
-    title: "Occupied Rooms",
-    value: "108",
-    subtitle: "90%",
-    icon: BedDouble,
-  },
-  {
-    title: "Available Rooms",
-    value: "12",
-    subtitle: "",
-    icon: BedDouble,
-  },
-  {
-    title: "Monthly Revenue",
-    value: "NPR 1.8M",
-    dark: true,
-    icon: CreditCard,
-  },
-  {
-    title: "Pending Complaints",
-    value: "8",
-    danger: true,
-    icon: AlertTriangle,
-  },
-];
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { getAllStudents } from "@/api/studentapi";
+import { getAllRooms } from "@/api/roomapi";
 
 export default function DashboardPage() {
+  // ── DATA FETCHING 
+  const { data: studentsData } = useQuery({
+    queryKey: ["students"],
+    queryFn: getAllStudents,
+  });
+  const students = studentsData?.data ?? [];
+
+  const { data: roomsData } = useQuery({
+    queryKey: ["rooms"],
+    queryFn: getAllRooms,
+  });
+  const rooms = roomsData?.data ?? [];
+
+  // ── DERIVED STATS (real data bata calculate garx) 
+  const totalStudents = students.length;
+  const totalRooms = rooms.length;
+  const occupiedRooms = rooms.filter((r: any) => r.Occupied >= r.Capacity).length;
+  const availableRooms = rooms.filter((r: any) => r.Occupied < r.Capacity).length;
+
+  const totalCapacity = rooms.reduce((sum: number, r: any) => sum + r.Capacity, 0);
+  const totalOccupied = rooms.reduce((sum: number, r: any) => sum + r.Occupied, 0);
+  const occupancyPct = totalCapacity > 0 ? Math.round((totalOccupied / totalCapacity) * 100) : 0;
+
+  const stats = [
+    {
+      title: "Total Students",
+      value: String(totalStudents),
+      subtitle: "",
+      icon: Users,
+    },
+    {
+      title: "Total Rooms",
+      value: String(totalRooms),
+      subtitle: "",
+      icon: BedDouble,
+    },
+    {
+      title: "Occupied Rooms",
+      value: String(occupiedRooms),
+      subtitle: `${occupancyPct}%`,
+      icon: BedDouble,
+    },
+    {
+      title: "Available Rooms",
+      value: String(availableRooms),
+      subtitle: "",
+      icon: BedDouble,
+    },
+    {
+      // MOCK - Fee module banauna baki xa, so value is 0
+      title: "Monthly Revenue",
+      value: "NPR 0",
+      dark: true,
+      icon: CreditCard,
+    },
+    {
+      // MOCK - Complaint module banauna baki xa, so value is 0
+      title: "Pending Complaints",
+      value: "0",
+      danger: true,
+      icon: AlertTriangle,
+    },
+  ];
+
   return (
     <div className="p-4 md:p-8 bg-[#F9F9F9] min-h-screen">
       {/* Header */}
@@ -54,7 +85,7 @@ export default function DashboardPage() {
         </h1>
 
         <p className="text-gray-500 mt-2">
-          Welcome back. Here's an overview of hostel operations.
+          Welcome back. Here&apos;s an overview of hostel operations.
         </p>
       </div>
 
@@ -102,35 +133,38 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* Left Side */}
         <div className="xl:col-span-8 flex flex-col gap-6 min-w-0">
-          {/* Occupancy */}
+          
           <div className="bg-white border rounded-xl p-6">
             <h2 className="text-xl font-semibold mb-4">
               Occupancy Overview
             </h2>
 
             <div className="w-full h-8 bg-gray-200 rounded-full overflow-hidden mb-6">
-              <div className="w-[90%] h-full bg-black"></div>
+              <div className="h-full bg-black" style={{ width: `${occupancyPct}%` }}></div>
             </div>
 
             <p className="text-2xl md:text-4xl font-bold mb-4">
-              90%
+              {occupancyPct}%
             </p>
 
             <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
-              {Array.from({ length: 60 }).map((_, index) => (
+              {/* harek euta room lai euta block ko shape ma dekhaune, occupied vaye black */}
+              {rooms.map((r: any) => (
                 <div
-                  key={index}
+                  key={r._id}
+                  title={r.RoomNumber}
                   className={`h-10 rounded ${
-                    index < 54
-                      ? "bg-black"
-                      : "bg-gray-200"
+                    r.Occupied >= r.Capacity ? "bg-black" : "bg-gray-200"
                   }`}
                 />
               ))}
+              {rooms.length === 0 && (
+                <p className="col-span-full text-sm text-gray-400">No rooms added yet.</p>
+              )}
             </div>
           </div>
 
-          {/* Recent Payments */}
+          {/* Recent Fee Payments - MOCK, Fee module build garnu baki xa */}
           <div className="bg-white border rounded-xl p-6">
             <div className="flex flex-col sm:flex-row sm:justify-between gap-2 mb-5">
               <h2 className="text-xl font-semibold">
@@ -162,29 +196,9 @@ export default function DashboardPage() {
                 </thead>
 
                 <tbody>
-                  <tr className="border-b">
-                    <td className="py-4">
-                      Rochak Sharma
-                    </td>
-                    <td>A-101</td>
-                    <td>June 15, 2026</td>
-                    <td className="text-right">
-                      <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm">
-                        Paid
-                      </span>
-                    </td>
-                  </tr>
-
                   <tr>
-                    <td className="py-4">
-                      Aayush Karki
-                    </td>
-                    <td>B-205</td>
-                    <td>June 14, 2026</td>
-                    <td className="text-right">
-                      <span className="px-3 py-1 bg-gray-100 rounded-lg text-sm">
-                        Paid
-                      </span>
+                    <td colSpan={4} className="py-6 text-center text-gray-400 text-sm">
+                      No fee records yet — Fee module not built.
                     </td>
                   </tr>
                 </tbody>
@@ -195,57 +209,25 @@ export default function DashboardPage() {
 
         {/* Right Side */}
         <div className="xl:col-span-4 flex flex-col gap-6 min-w-0">
-          {/* Complaints */}
+          {/* Complaints - MOCK, Complaint module build garnu baki xa */}
           <div className="bg-white border rounded-xl p-6">
             <h2 className="text-xl font-semibold mb-4">
               Recent Complaints
             </h2>
 
             <div className="space-y-4">
-              <div className="border rounded-lg p-3">
-                <p className="font-medium">
-                  Water Supply Issue
-                </p>
-                <p className="text-sm text-gray-500">
-                  Room A-102
-                </p>
-              </div>
-
-              <div className="border rounded-lg p-3">
-                <p className="font-medium">
-                  WiFi Problem
-                </p>
-                <p className="text-sm text-gray-500">
-                  Room B-205
-                </p>
-              </div>
+              <p className="text-sm text-gray-400">No complaints yet — Complaint module not built.</p>
             </div>
           </div>
 
-          {/* Notices */}
+          {/* Notices - MOCK, Notice module build garnu baki xa */}
           <div className="bg-white border rounded-xl p-6">
             <h2 className="text-xl font-semibold mb-4">
               Latest Notices
             </h2>
 
             <div className="space-y-4">
-              <div>
-                <p className="font-medium">
-                  Visitor Timing Update
-                </p>
-                <p className="text-sm text-gray-500">
-                  Posted today
-                </p>
-              </div>
-
-              <div>
-                <p className="font-medium">
-                  Fee Submission Reminder
-                </p>
-                <p className="text-sm text-gray-500">
-                  Posted yesterday
-                </p>
-              </div>
+              <p className="text-sm text-gray-400">No notices yet — Notice module not built.</p>
             </div>
           </div>
 
@@ -256,15 +238,20 @@ export default function DashboardPage() {
             </h2>
 
             <div className="space-y-3">
-              <button className="w-full bg-black text-white py-3 rounded-lg">
-                Add Student
-              </button>
+              
+              <Link href="/admin/students">
+                <button className="w-full bg-black text-white py-3 rounded-lg">
+                  Assign Room
+                </button>
+              </Link>
 
-              <button className="w-full bg-black text-white py-3 rounded-lg">
-                Assign Room
-              </button>
+              <Link href="/admin/rooms">
+                <button className="w-full bg-black text-white py-3 rounded-lg">
+                  Manage Rooms
+                </button>
+              </Link>
 
-              <button className="w-full bg-black text-white py-3 rounded-lg">
+              <button className="w-full bg-black text-white py-3 rounded-lg" disabled>
                 Create Notice
               </button>
             </div>
