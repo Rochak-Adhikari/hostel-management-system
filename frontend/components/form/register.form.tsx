@@ -34,8 +34,8 @@ export default function RegisterPage() {
 
   const { mutate, isPending, error, isError } = useMutation({
     mutationFn: registerUser,
-    onSuccess: () => {
-      router.push('/login');
+    onSuccess: (data, variables) => {
+      router.push(`/confirm-otp?email=${encodeURIComponent(variables.email)}`);
     },
   });
 

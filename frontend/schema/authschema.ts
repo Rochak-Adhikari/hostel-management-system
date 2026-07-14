@@ -23,3 +23,7 @@ export const RegisterSchema = yup.object({
 export const ForgotPasswordSchema = yup.object({
   email: yup.string().email('Enter a valid email').required('Email is required'),
 })
+
+export const OtpSchema = yup.object({
+  otp: yup.string().length(6, 'OTP must be exactly 6 digits').required('OTP is required'),
+})
