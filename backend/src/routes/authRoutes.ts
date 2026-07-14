@@ -3,7 +3,11 @@ import express from "express";
 import { register, login } from "../controllers/authController";
 
 
+
 const router = express.Router();
+
+
+
 
 //register ko route
 //? post , /api/v1/auth/register this is called endpoint

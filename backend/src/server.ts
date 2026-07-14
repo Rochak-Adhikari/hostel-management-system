@@ -13,6 +13,7 @@ import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/studentRoutes";
 import roomRoutes from "./routes/roomRoutes";
 import allocationRoutes from "./routes/allocationRoutes";
+import profileRoutes from "./routes/profileRoutes";
 
 
 
@@ -44,7 +45,7 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/rooms", roomRoutes);
 app.use("/api/v1/allocations", allocationRoutes);
-
+app.use("/api/v1/profile", profileRoutes);
 
 // path not found error ko lagi
 app.use(( req:Request, res:Response, next:NextFunction)=>{

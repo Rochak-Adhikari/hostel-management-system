@@ -32,10 +32,36 @@ const userSchema = new mongoose.Schema(
 
     },
 
-  profile_picture: {
-  type: String,
-  default: "",
+    isVerified: {
+    type: Boolean,
+   default: false,
 },
+
+   otp_hash:{
+     type: String,
+     select: false,  
+  },
+
+  otp_expiry:{
+    type: Date,
+    select: false,
+
+  },
+
+  profile_picture: {
+  type: {
+    url: { 
+      type: String,
+      default: "",
+     },
+  public_id: { 
+      type: String,
+      default: "",
+    },
+  },
+  required: false,
+},
+
 
     role: {
       type: String,
