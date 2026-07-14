@@ -36,3 +36,8 @@ export const getAvailableBeds = async (roomId: string) => {
     const response = await axios.get(`${BASE_URL}/available-beds/${roomId}`);
     return response.data;
 }
+
+export const getAllocationsByRoom = async (roomId: string) => {
+    const response = await axios.get(`${BASE_URL}/room/${roomId}`);
+    return response.data;
+}

@@ -254,3 +254,20 @@ export const getAvailableBeds = async (req: Request, res: Response, next: NextFu
     return next(error);
   }
 };
+
+// specific room ko sabai allocations haru fetch garna roommates logic ko lagi
+export const getAllocationsByRoom = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { roomId } = req.params;
+    const allocations = await Allocation.find({ room: roomId });
+
+    return res.status(200).json({
+      message: "Room allocations fetched successfully",
+      code: "success",
+      status: "success",
+      data: allocations,
+    });
+  } catch (error: any) {
+    return next(error);
+  }
+};
