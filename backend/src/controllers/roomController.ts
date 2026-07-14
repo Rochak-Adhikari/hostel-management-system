@@ -7,12 +7,10 @@ import Room from "../models/Room";
 
 export const createRoom = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { RoomType, RoomNumber, Floor, Capacity,Occupied,  MonthlyFee} = req.body;
+    const { RoomType, RoomNumber, block, Floor, Capacity, Occupied, MonthlyFee } = req.body;
 
     // validation
-    if (!RoomType || !RoomNumber || !Floor || !Capacity || !MonthlyFee) {
-
-
+    if (!RoomType || !RoomNumber || !block || !Floor || !Capacity || !MonthlyFee) {
       throw new AppError(
         "All fields are required",
         400,
@@ -23,21 +21,20 @@ export const createRoom = async (req: Request, res: Response, next: NextFunction
     // Occupied value Capacity bhanda badi vaye error throw garxa
     if (Occupied > Capacity) {
       throw new AppError(
-    "Occupied cannot be greater than room capacity",
-    400,
-    ErrorCodes.VALIDATION_ERROR
-     );
+        "Occupied cannot be greater than room capacity",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
     }
 
-
-
     const room = new Room({
-    RoomType,
-    RoomNumber,
-    Floor,
-    Capacity,
-    Occupied,
-    MonthlyFee
+      RoomType,
+      RoomNumber,
+      block,
+      Floor,
+      Capacity,
+      Occupied,
+      MonthlyFee
     });
 
     await room.save();
@@ -50,6 +47,7 @@ export const createRoom = async (req: Request, res: Response, next: NextFunction
         id: room._id,
         RoomType: room.RoomType,
         RoomNumber: room.RoomNumber,
+        block: room.block,
         Floor: room.Floor,
         Capacity: room.Capacity,
         Occupied: room.Occupied,

@@ -4,9 +4,8 @@ import { useState } from "react";
 import { Search, Eye, Pencil, Trash2, X, Home } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAllStudents, updateStudent, deleteStudent } from "@/api/studentapi";
-import { getAllAllocations, createAllocation, deleteAllocation } from "@/api/allocationapi";
+import { getAllAllocations, createAllocation, deleteAllocation, getAvailableBeds } from "@/api/allocationapi";
 import { getAllRooms } from "@/api/roomapi";
-import { getBuildingGender } from "@/utils/roomUtils";
 
 type Student = {
   _id: string;
@@ -26,6 +25,7 @@ type Student = {
 type Room = {
   _id: string;
   RoomNumber: string;
+  block: string;
   Floor: string;
   RoomType: string;
   Capacity: number;
@@ -37,6 +37,7 @@ type Allocation = {
   _id: string;
   student: string;
   room: string;
+  bed: string;
 };
 
 function StatusPill({ label, type }: { label: string; type: "active" | "neutral" }) {
@@ -55,9 +56,16 @@ function StatusPill({ label, type }: { label: string; type: "active" | "neutral"
 
 type ModalMode = "view" | "edit" | "assign" | null;
 
-const genderMap: Record<string, string> = { male: "Boys", female: "Girls" };
+
 
 export default function StudentsPage() {
+  const [search, setSearch] = useState("");
+  const [modal, setModal] = useState<ModalMode>(null);
+  const [selected, setSelected] = useState<Student | null>(null);
+  const [form, setForm] = useState<Partial<Student>>({});
+  const [selectedRoomId, setSelectedRoomId] = useState<string>("");
+  const [selectedBed, setSelectedBed] = useState<string>("");
+
   const { data, isPending, isError } = useQuery({
     queryKey: ["students"],
     queryFn: getAllStudents,
@@ -76,15 +84,16 @@ export default function StudentsPage() {
   });
   const rooms: Room[] = roomsData?.data ?? [];
 
+  const { data: availableBedsData } = useQuery({
+    queryKey: ["availableBeds", selectedRoomId],
+    queryFn: () => getAvailableBeds(selectedRoomId),
+    enabled: !!selectedRoomId,
+  });
+  const availableBeds: string[] = availableBedsData?.data ?? [];
+
   // TESTING KO LAGI: console ma data haru check garne
   console.log("rooms fetched:", rooms);
   console.log("allocations fetched:", allocations);
-
-  const [search, setSearch] = useState("");
-  const [modal, setModal] = useState<ModalMode>(null);
-  const [selected, setSelected] = useState<Student | null>(null);
-  const [form, setForm] = useState<Partial<Student>>({});
-  const [selectedRoomId, setSelectedRoomId] = useState<string>("");
 
   const filtered = students.filter(
     (s) =>
@@ -106,9 +115,7 @@ export default function StudentsPage() {
   function getAvailableRoomsForStudent(student: Student): Room[] {
     const available = rooms.filter((r) => {
       const hasSpace = r.Occupied < r.Capacity;
-      const roomGender = getBuildingGender(r.RoomNumber);
-      const matchesGender = !roomGender || genderMap[student.gender] === roomGender;
-      return hasSpace && matchesGender;
+      return hasSpace;
     });
     // TESTING KO LAGI: yesle available rooms dekhauxa console ma
     console.log("available rooms for", student.full_name, ":", available);
@@ -183,6 +190,7 @@ export default function StudentsPage() {
     console.log("openAssign clicked for:", s.full_name, s._id);
     setSelected(s);
     setSelectedRoomId("");
+    setSelectedBed("");
     setModal("assign");
   }
 
@@ -191,6 +199,7 @@ export default function StudentsPage() {
     setSelected(null);
     setForm({});
     setSelectedRoomId("");
+    setSelectedBed("");
   }
 
   function handleDelete(id: string) {
@@ -207,12 +216,12 @@ export default function StudentsPage() {
 
   function handleAssign() {
     // TESTING KO LAGI
-    console.log("handleAssign called. selected:", selected?._id, "selectedRoomId:", selectedRoomId);
-    if (!selected || !selectedRoomId) {
-      alert("Please select a room.");
+    console.log("handleAssign called. selected:", selected?._id, "selectedRoomId:", selectedRoomId, "selectedBed:", selectedBed);
+    if (!selected || !selectedRoomId || !selectedBed) {
+      alert("Please select a room and a bed.");
       return;
     }
-    assignMutation.mutate({ student: selected._id, room: selectedRoomId });
+    assignMutation.mutate({ student: selected._id, room: selectedRoomId, bed: selectedBed });
   }
 
   function handleUnassign(studentId: string) {
@@ -293,7 +302,9 @@ export default function StudentsPage() {
                     <td className="py-4 px-5 text-sm text-gray-500">{s.phone}</td>
                     <td className="py-4 px-5 text-sm">
                       {assignedRoom ? (
-                        <span className="font-medium">{assignedRoom.RoomNumber}</span>
+                        <span className="font-medium">
+                          {assignedRoom.RoomNumber} (Block {assignedRoom.block}, Bed {getAllocationForStudent(s._id)?.bed})
+                        </span>
                       ) : (
                         <span className="text-gray-400">Unassigned</span>
                       )}
@@ -362,6 +373,11 @@ export default function StudentsPage() {
                     ["Guardian Name", selected.guardian?.name],
                     ["Guardian Phone", selected.guardian?.phone],
                     ["Guardian Email", selected.guardian?.email],
+                    ["Room Allocation", (() => {
+                      const assignedRoom = getAssignedRoom(selected._id);
+                      const allocation = getAllocationForStudent(selected._id);
+                      return assignedRoom ? `${assignedRoom.RoomNumber} (Block ${assignedRoom.block}, Bed ${allocation?.bed})` : "Unassigned";
+                    })()],
                     ["Registered", selected.createdAt ? new Date(selected.createdAt).toLocaleDateString() : "-"],
                   ].map(([label, value]) => (
                     <div key={label}>
@@ -395,26 +411,53 @@ export default function StudentsPage() {
                 <div>
                   <p className="text-sm text-gray-500 mb-3">
                     Assigning a room for <span className="font-semibold">{selected.full_name}</span>
-                    {" "}(gender: {selected.gender})
                   </p>
-                  <label className="block text-xs text-gray-500 mb-1">Available Room</label>
-                  <select
-                    value={selectedRoomId}
-                    onChange={(e) => setSelectedRoomId(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
-                  >
-                    <option value="">Select a room</option>
-                    {getAvailableRoomsForStudent(selected).map((r) => (
-                      <option key={r._id} value={r._id}>
-                        {r.RoomNumber} - {r.RoomType} ({r.Occupied}/{r.Capacity})
-                      </option>
-                    ))}
-                  </select>
-                  {getAvailableRoomsForStudent(selected).length === 0 && (
-                    <p className="text-xs text-gray-400 mt-2">
-                      No available rooms match this student&apos;s gender right now. (Check console log for room list and this student&apos;s gender value.)
-                    </p>
-                  )}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Available Room</label>
+                      <select
+                        value={selectedRoomId}
+                        onChange={(e) => {
+                          setSelectedRoomId(e.target.value);
+                          setSelectedBed("");
+                        }}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                      >
+                        <option value="">Select a room</option>
+                        {getAvailableRoomsForStudent(selected).map((r) => (
+                          <option key={r._id} value={r._id}>
+                            {r.RoomNumber} - {r.RoomType} ({r.Occupied}/{r.Capacity})
+                          </option>
+                        ))}
+                      </select>
+                      {getAvailableRoomsForStudent(selected).length === 0 && (
+                        <p className="text-xs text-gray-400 mt-2">
+                          No available rooms right now.
+                        </p>
+                      )}
+                    </div>
+
+                    {selectedRoomId && (
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Available Beds</label>
+                        <select
+                          value={selectedBed}
+                          onChange={(e) => setSelectedBed(e.target.value)}
+                          className="w-full border border-gray-300 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                        >
+                          <option value="">Select a bed</option>
+                          {availableBeds.map((b) => (
+                            <option key={b} value={b}>
+                              Bed {b.toUpperCase()}
+                            </option>
+                          ))}
+                        </select>
+                        {availableBeds.length === 0 && (
+                          <p className="text-xs text-red-500 mt-1">No beds available in this room.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -426,8 +469,9 @@ export default function StudentsPage() {
                 </button>
                 <button
                   type="button"
+                  disabled={modal === "assign" && (!selectedRoomId || !selectedBed)}
                   onClick={modal === "edit" ? handleSave : handleAssign}
-                  className="px-5 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-900 transition"
+                  className="px-5 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-900 transition disabled:opacity-50"
                 >
                   {modal === "edit" ? "Save Changes" : "Assign Room"}
                 </button>

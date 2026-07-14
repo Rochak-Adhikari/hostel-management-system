@@ -12,6 +12,10 @@ const allocationSchema = new mongoose.Schema(
       ref: "Room",
       required: [true, "Room is required"],
     },
+    bed: {
+      type: String,
+      required: [true, "Bed is required"],
+    },
     allocatedDate: {
       type: Date,
       default: Date.now,

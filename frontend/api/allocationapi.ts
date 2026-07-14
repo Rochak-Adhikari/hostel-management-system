@@ -31,3 +31,8 @@ export const deleteAllocation = async (id: string) => {
     const response = await axios.delete(`${BASE_URL}/${id}`);
     return response.data;
 }
+
+export const getAvailableBeds = async (roomId: string) => {
+    const response = await axios.get(`${BASE_URL}/available-beds/${roomId}`);
+    return response.data;
+}

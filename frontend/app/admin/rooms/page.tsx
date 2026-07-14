@@ -16,6 +16,7 @@ type RoomFormValues = yup.InferType<typeof RoomSchema>;
 type Room = {
   _id: string;
   RoomNumber: string;
+  block: string;
   Floor: string;
   RoomType: string;
   Capacity: number;
@@ -142,6 +143,7 @@ export default function RoomsPage() {
   function handleSave(formData: RoomFormValues) {
     const payload = {
       RoomNumber: formData.RoomNumber,
+      block: formData.block,
       Floor: formData.Floor,
       RoomType: formData.RoomType,
       Capacity: Number(formData.Capacity),
@@ -157,8 +159,9 @@ export default function RoomsPage() {
   }
 
   // modal ma dekhine input fields ko list (label + placeholder + register key)
-  const formFields: { key: keyof RoomFormValues; label: string; placeholder: string }[] = [
+  const formFields: { key: keyof RoomFormValues; label: string; placeholder: string; isSelect?: boolean; options?: string[] }[] = [
     { key: "RoomNumber", label: "Room Number", placeholder: "e.g. A-101" },
+    { key: "block", label: "Block", placeholder: "", isSelect: true, options: ["A", "B", "C", "D", "E"] },
     { key: "Floor", label: "Floor", placeholder: "e.g. Ground / First" },
     { key: "RoomType", label: "Room Type", placeholder: "Single / Double / Triple" },
     { key: "Capacity", label: "Capacity", placeholder: "Max occupants" },
@@ -215,6 +218,7 @@ export default function RoomsPage() {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Room No.</th>
+                <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Block</th>
                 <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Floor</th>
                 <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
                 <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Capacity</th>
@@ -231,6 +235,7 @@ export default function RoomsPage() {
                 return (
                   <tr key={r._id} className="border-b border-gray-100 hover:bg-gray-50 transition">
                     <td className="py-4 px-5 text-sm font-semibold">{r.RoomNumber}</td>
+                    <td className="py-4 px-5 text-sm text-gray-500">{r.block}</td>
                     <td className="py-4 px-5 text-sm text-gray-500">{r.Floor}</td>
                     <td className="py-4 px-5 text-sm text-gray-500">{r.RoomType}</td>
                     <td className="py-4 px-5 text-sm text-gray-500">{r.Capacity}</td>
@@ -275,12 +280,26 @@ export default function RoomsPage() {
               {formFields.map((field) => (
                 <div key={field.key}>
                   <label className="block text-xs text-gray-500 mb-1">{field.label}</label>
-                  <input
-                    type="text"
-                    placeholder={field.placeholder}
-                    {...register(field.key)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
-                  />
+                  {field.isSelect ? (
+                    <select
+                      {...register(field.key)}
+                      className="w-full border border-gray-300 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                    >
+                      <option value="">Select Block</option>
+                      {field.options?.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder={field.placeholder}
+                      {...register(field.key)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                    />
+                  )}
                   {/* yup schema le fail garya vane, field ko tala error message dekhaune */}
                   {errors[field.key] && (
                     <p className="text-red-500 text-xs mt-1">

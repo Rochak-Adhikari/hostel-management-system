@@ -31,3 +31,17 @@ export enum RoomGender {
   BOYS = "Boys",
   GIRLS = "Girls",
 }
+
+export enum Block {
+  A = "A",
+  B = "B",
+  C = "C",
+  D = "D",
+  E = "E",
+}
+
+export enum ComplaintStatus {
+  PENDING = "Pending",
+  IN_PROGRESS = "In Progress",
+  RESOLVED = "Resolved",
+}

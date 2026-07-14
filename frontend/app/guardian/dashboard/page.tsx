@@ -12,34 +12,18 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { getStudentById } from "@/api/studentapi";
+import { getAllocationByStudent } from "@/api/allocationapi";
+import { getRoomById } from "@/api/roomapi";
+import { getComplaintsByStudent } from "@/api/complaintapi";
 
 // ── Static Mock Data ─────────────────────────────────────────────────────────
-const guardian = {
-  name: "Bindu Adhikari",
-  relationship: "Parent",
-};
-
-const child = {
-  name: "Rochak Adhikari",
-  id: "STU-2026-014",
-  roomNumber: "A-001",
-  roomType: "Quadruple Sharing",
-  floor: "2nd Floor",
-  admissionDate: "12 Jan 2025",
-  hostelStatus: "In Hostel",
-};
-
 const paymentsSummary = {
   status: "PAID",
   month: "June 2026",
   nextDueDate: "15 Jul 2026",
   nextAmount: "Rs. 12,000",
-};
-
-const complaintsSummary = {
-  total: 2,
-  pending: 1,
-  resolved: 1,
 };
 
 const recentLogs = [
@@ -54,6 +38,54 @@ const notices = [
 ];
 
 export default function GuardianDashboard() {
+  // localStorage bata login garda save vaisako user info nikalne
+  const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+  const currentUser = storedUser ? JSON.parse(storedUser) : null;
+
+  // Linked child fetch garne
+  const { data: childData } = useQuery({
+    queryKey: ["linkedStudent", currentUser?.linked_student],
+    queryFn: () => getStudentById(currentUser.linked_student),
+    enabled: !!currentUser?.linked_student,
+  });
+  const child = childData?.data;
+
+  // Student ko allocation (room) fetch garne
+  const { data: allocationData } = useQuery({
+    queryKey: ["childAllocation", currentUser?.linked_student],
+    queryFn: () => getAllocationByStudent(currentUser.linked_student),
+    enabled: !!currentUser?.linked_student,
+  });
+  const allocation = allocationData?.data;
+
+  // Allocation payepachi room details fetch garne
+  const { data: roomData } = useQuery({
+    queryKey: ["childRoom", allocation?.room],
+    queryFn: () => getRoomById(allocation.room),
+    enabled: !!allocation?.room,
+  });
+  const room = roomData?.data;
+
+  // Student ko complaints fetch garne
+  const { data: complaintsDataRes } = useQuery({
+    queryKey: ["childComplaints", currentUser?.linked_student],
+    queryFn: () => getComplaintsByStudent(currentUser.linked_student),
+    enabled: !!currentUser?.linked_student,
+  });
+  const childComplaints = complaintsDataRes?.data ?? [];
+  const complaintsTotal = childComplaints.length;
+  const complaintsPending = childComplaints.filter((c: any) => c.status === "Pending").length;
+  const complaintsInProgress = childComplaints.filter((c: any) => c.status === "In Progress").length;
+  const complaintsActive = complaintsPending + complaintsInProgress;
+
+  const childName = child?.full_name ?? "No linked student";
+  const childId = child?._id ?? "-";
+  const childAdmissionDate = child?.createdAt ? new Date(child.createdAt).toLocaleDateString("en-GB") : "-";
+  const hostelStatus = allocation ? "In Hostel" : "Not Assigned";
+  const roomNumberDisplay = room ? `${room.RoomNumber} (Block ${room.block}, Bed ${allocation?.bed?.toUpperCase()})` : "Unassigned";
+  const roomTypeDisplay = room?.RoomType ?? "N/A";
+  const floorDisplay = room?.Floor ?? "N/A";
+
   return (
     <div className="space-y-5">
       {/* ── Welcome Header ── */}
@@ -63,7 +95,7 @@ export default function GuardianDashboard() {
             Guardian Dashboard
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Welcome back, {guardian.name} ({guardian.relationship}) · Linked child: <span className="font-semibold text-gray-800">{child.name}</span>
+            Welcome back, {currentUser?.full_name || "Guardian"} · Linked child: <span className="font-semibold text-gray-800">{childName}</span>
           </p>
         </div>
         <span className="text-xs text-gray-400 font-mono">
@@ -82,8 +114,8 @@ export default function GuardianDashboard() {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           </div>
           <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">Hostel Status</p>
-          <p className="text-lg font-black text-gray-900">{child.hostelStatus}</p>
-          <p className="text-xs text-gray-400 mt-0.5">Room {child.roomNumber}</p>
+          <p className="text-lg font-black text-gray-900">{hostelStatus}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{room ? `Room ${room.RoomNumber}` : "No room yet"}</p>
         </div>
 
         {/* Child Fee Status */}
@@ -110,9 +142,9 @@ export default function GuardianDashboard() {
               </div>
               <ChevronRight size={13} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
             </div>
-            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">My Complaints</p>
-            <p className="text-lg font-black text-gray-900">{complaintsSummary.total}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{complaintsSummary.pending} active</p>
+            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">Child's Complaints</p>
+            <p className="text-lg font-black text-gray-900">{complaintsTotal}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{complaintsActive} active</p>
           </div>
         </Link>
 
@@ -133,7 +165,7 @@ export default function GuardianDashboard() {
       </div>
 
       {/* ── Linked Child Profile Card ── */}
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
         <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center">
           <Users size={14} className="text-gray-500 mr-2" />
           <h2 className="text-sm font-semibold text-gray-700">Linked Student Profile</h2>
@@ -141,13 +173,13 @@ export default function GuardianDashboard() {
         <div className="p-5">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              ["Student Name", child.name],
-              ["Student ID", child.id],
-              ["Admitted On", child.admissionDate],
-              ["Current Room", child.roomNumber],
-              ["Room Type", child.roomType],
-              ["Floor Location", child.floor],
-              ["Status", child.hostelStatus],
+              ["Student Name", childName],
+              ["Student ID", childId],
+              ["Admitted On", childAdmissionDate],
+              ["Current Room / Bed", roomNumberDisplay],
+              ["Room Type", roomTypeDisplay],
+              ["Floor Location", floorDisplay],
+              ["Status", hostelStatus],
             ].map(([k, v]) => (
               <div key={k}>
                 <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-0.5">{k}</p>

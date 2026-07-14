@@ -3,19 +3,18 @@ import { AppError } from "../middleware/errorhandlermiddleware";
 import { ErrorCodes } from "../types/enum";
 import Allocation from "../models/Allocation";
 import Room from "../models/Room";
-import User from "../models/user";
-import { getBuildingGender } from "../utils/roomUtils";
+import { getBedList } from "../utils/bedUtils";
 
 // CREATE ALLOCATION
 // euta student lai euta room allocate garna ko lagi
 export const createAllocation = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { student, room, allocatedDate } = req.body;
+    const { student, room, bed, allocatedDate } = req.body;
 
     // validation
-    if (!student || !room) {
+    if (!student || !room || !bed) {
       throw new AppError(
-        "Student and Room are required",
+        "Student, Room, and Bed are required",
         400,
         ErrorCodes.VALIDATION_ERROR
       );
@@ -32,25 +31,17 @@ export const createAllocation = async (req: Request, res: Response, next: NextFu
       throw new AppError("Room is full", 400, ErrorCodes.ROOM_FULL);
     }
 
-    // student ko full record fetch garera, gender check garnu ko lagi
-    const studentUser = await User.findById(student);
-    if (!studentUser) {
-      throw new AppError("Student Not Found", 404, ErrorCodes.NOT_FOUND);
+    // Validate requested bed
+    const validBeds = getBedList(existingRoom.Capacity);
+    if (!validBeds.includes(bed)) {
+      throw new AppError("Invalid bed for this room's capacity", 400, ErrorCodes.VALIDATION_ERROR);
     }
 
-    // room number ko prefix (A/B) bata kun building ho check garne
-    const roomBuilding = getBuildingGender(existingRoom.RoomNumber);
-
-    // student ko gender lai building name ma convert garna ko lagi mapping
-    const genderMap: Record<string, string> = { male: "Boys", female: "Girls" };
-
-    // student ko gender ra room ko building match hunu parxa
-    if (roomBuilding && genderMap[studentUser.gender] !== roomBuilding) {
-      throw new AppError(
-        "Room is reserved for a different gender",
-        400,
-        ErrorCodes.ROOM_NOT_AVAILABLE
-      );
+    // Check if the bed is already taken in this room
+    const existingAllocations = await Allocation.find({ room: existingRoom._id });
+    const takenBeds = existingAllocations.map((a) => a.bed);
+    if (takenBeds.includes(bed)) {
+      throw new AppError("This bed is already occupied", 400, ErrorCodes.VALIDATION_ERROR);
     }
 
     // student lai pahile dekhi kunai room allocate vaisako cha ki check garne
@@ -66,6 +57,7 @@ export const createAllocation = async (req: Request, res: Response, next: NextFu
     const allocation = new Allocation({
       student,
       room,
+      bed,
       allocatedDate,
     });
 
@@ -234,6 +226,30 @@ export const deleteAllocation = async (req: Request, res: Response, next: NextFu
       data: null,
     });
 
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+// Room ko available beds fetch garna ko lagi
+export const getAvailableBeds = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { roomId } = req.params;
+    const room = await Room.findById(roomId);
+    if (!room) {
+      throw new AppError("Room Not Found", 404, ErrorCodes.ROOM_NOT_FOUND);
+    }
+    const allBeds = getBedList(room.Capacity);
+    const existingAllocations = await Allocation.find({ room: roomId });
+    const takenBeds = existingAllocations.map((a) => a.bed);
+    const availableBeds = allBeds.filter((b) => !takenBeds.includes(b));
+
+    return res.status(200).json({
+      message: "Available beds fetched successfully",
+      code: "success",
+      status: "success",
+      data: availableBeds,
+    });
   } catch (error: any) {
     return next(error);
   }

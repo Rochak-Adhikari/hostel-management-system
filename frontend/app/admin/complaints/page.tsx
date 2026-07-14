@@ -1,26 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Trash2, Eye, X } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getAllComplaints, updateComplaint, deleteComplaint } from "@/api/complaintapi";
 
 type Complaint = {
-  id: string;
-  studentName: string;
-  room: string;
+  _id: string;
+  student: {
+    _id: string;
+    full_name: string;
+    email: string;
+    phone?: string;
+  } | null;
+  title: string;
   description: string;
-  submittedDate: string;
-  resolvedDate: string;
   status: "Pending" | "In Progress" | "Resolved";
-  adminResponse: string;
+  category?: string;
+  createdAt: string;
+  updatedAt: string;
 };
-
-const initialComplaints: Complaint[] = [
-  { id: "CMP-1045", studentName: "Rochak Adhikari", room: "A-101", description: "The tap in my bathroom is leaking continuously despite being shut tightly.", submittedDate: "12 Jun 2026", resolvedDate: "", status: "In Progress", adminResponse: "Technician has been assigned for inspection." },
-  { id: "CMP-1042", studentName: "Nujhaw Tandukar", room: "B-205", description: "The ceiling fan in my room is sparking near the junction box.", submittedDate: "10 Jun 2026", resolvedDate: "13 Jun 2026", status: "Resolved", adminResponse: "Fan has been replaced. Please verify." },
-  { id: "CMP-1039", studentName: "Shakti Sherpa", room: "A-103", description: "One side of my bed frame is broken. Cannot sleep properly.", submittedDate: "05 Jun 2026", resolvedDate: "", status: "Pending", adminResponse: "" },
-  { id: "CMP-1036", studentName: "Lizan Gurung", room: "C-102", description: "WiFi signal is very weak in my room and disconnects frequently.", submittedDate: "01 Jun 2026", resolvedDate: "", status: "In Progress", adminResponse: "Network team is looking into it." },
-  { id: "CMP-1030", studentName: "Sabin Shrestha", room: "C-201", description: "The bathroom door lock is broken and cannot be locked from inside.", submittedDate: "25 May 2026", resolvedDate: "28 May 2026", status: "Resolved", adminResponse: "Lock has been replaced." },
-];
 
 const STATUS_STYLES: Record<string, string> = {
   "In Progress": "border-black text-black",
@@ -30,49 +29,91 @@ const STATUS_STYLES: Record<string, string> = {
 
 function StatusPill({ status }: { status: string }) {
   return (
-    <span className={`px-3 py-1 text-xs font-semibold rounded-full border whitespace-nowrap ${STATUS_STYLES[status]}`}>
+    <span className={`px-3 py-1 text-xs font-semibold rounded-full border whitespace-nowrap ${STATUS_STYLES[status] || "border-gray-300 text-gray-500"}`}>
       {status.toUpperCase()}
     </span>
   );
 }
 
 export default function ComplaintsPage() {
-  const [complaints, setComplaints] = useState<Complaint[]>(initialComplaints);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [selected, setSelected] = useState<Complaint | null>(null);
-  const [responseText, setResponseText] = useState("");
   const [newStatus, setNewStatus] = useState<Complaint["status"]>("Pending");
 
+  // Real data fetching ko lagi TanStack Query
+  const { data: complaintsRes, isPending, isError } = useQuery({
+    queryKey: ["complaints"],
+    queryFn: getAllComplaints,
+  });
+  const complaints: Complaint[] = complaintsRes?.data ?? [];
+
+  // Update status mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: Complaint["status"] }) =>
+      updateComplaint(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["complaints"] });
+      setSelected(null);
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || "Failed to update complaint status");
+    },
+  });
+
+  // Delete complaint mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteComplaint(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["complaints"] });
+      setSelected(null);
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || "Failed to delete complaint");
+    },
+  });
+
   const filtered = complaints.filter((c) => {
+    const studentName = c.student?.full_name || "";
     const matchSearch =
-      c.studentName.toLowerCase().includes(search.toLowerCase()) ||
-      c.id.toLowerCase().includes(search.toLowerCase());
+      studentName.toLowerCase().includes(search.toLowerCase()) ||
+      c.title.toLowerCase().includes(search.toLowerCase()) ||
+      (c.category && c.category.toLowerCase().includes(search.toLowerCase()));
     const matchStatus = filterStatus === "All" || c.status === filterStatus;
     return matchSearch && matchStatus;
   });
 
   function openDetail(c: Complaint) {
     setSelected(c);
-    setResponseText(c.adminResponse);
     setNewStatus(c.status);
   }
 
   function handleUpdate() {
     if (!selected) return;
-    setComplaints((prev) =>
-      prev.map((c) =>
-        c.id === selected.id
-          ? {
-            ...c,
-            status: newStatus,
-            adminResponse: responseText,
-            resolvedDate: newStatus === "Resolved" ? new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : c.resolvedDate,
-          }
-          : c
-      )
+    updateMutation.mutate({ id: selected._id, status: newStatus });
+  }
+
+  function handleDelete(id: string) {
+    if (confirm("Are you sure you want to delete this complaint?")) {
+      deleteMutation.mutate(id);
+    }
+  }
+
+  if (isPending) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+        <p className="text-gray-500">Loading complaints...</p>
+      </div>
     );
-    setSelected(null);
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-red-500">
+        <p>Failed to load complaints. Please try again later.</p>
+      </div>
+    );
   }
 
   return (
@@ -107,7 +148,7 @@ export default function ComplaintsPage() {
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by student or ID..."
+                placeholder="Search by student, title, or category..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-black"
@@ -116,30 +157,42 @@ export default function ComplaintsPage() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-2 text-sm"
+              className="border border-gray-300 rounded-lg px-4 py-2 text-sm bg-white"
             >
-              <option>All</option>
-              <option>Pending</option>
-              <option>In Progress</option>
-              <option>Resolved</option>
+              <option value="All">All Statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
             </select>
           </div>
-          <div>
+          <div className="divide-y divide-gray-100">
             {filtered.map((c) => (
               <div
-                key={c.id}
+                key={c._id}
                 onClick={() => openDetail(c)}
-                className={`p-5 border-b border-gray-100 cursor-pointer flex items-center justify-between gap-3 transition ${selected?.id === c.id ? "bg-gray-50" : "hover:bg-gray-50"}`}
+                className={`p-5 flex items-center justify-between gap-3 cursor-pointer transition ${selected?._id === c._id ? "bg-gray-50" : "hover:bg-gray-50"}`}
               >
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 min-w-0">
                   <span className="text-xs font-bold text-gray-400 uppercase">
-                    {c.id} • {c.room}
+                    {c.category || "General"} • {new Date(c.createdAt).toLocaleDateString("en-GB")}
                   </span>
-                  <p className="font-semibold text-sm">{c.studentName}</p>
-                  <p className="text-xs text-gray-500 line-clamp-1">{c.description}</p>
-                  <p className="text-xs text-gray-400">Submitted: {c.submittedDate}</p>
+                  <p className="font-semibold text-sm text-gray-900 truncate">{c.title}</p>
+                  <p className="text-xs text-gray-500">Student: <span className="font-medium text-gray-700">{c.student?.full_name || "Unknown"}</span></p>
+                  <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{c.description}</p>
                 </div>
-                <StatusPill status={c.status} />
+                <div className="flex items-center gap-3 shrink-0">
+                  <StatusPill status={c.status} />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(c._id);
+                    }}
+                    className="p-1 text-gray-400 hover:text-red-600 transition"
+                    title="Delete"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             ))}
             {filtered.length === 0 && (
@@ -151,57 +204,63 @@ export default function ComplaintsPage() {
         {/* Right: Detail + Response */}
         <div className="space-y-6">
           {selected ? (
-            <>
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="p-4 border-b border-gray-200 bg-gray-50">
-                  <h3 className="font-semibold">Complaint: {selected.id}</h3>
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+              <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                <h3 className="font-semibold">Complaint Details</h3>
+                <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600">
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <p className="text-xs text-gray-500">Student</p>
+                  <p className="font-semibold text-gray-900">{selected.student?.full_name || "Unknown"}</p>
+                  <p className="text-xs text-gray-400">{selected.student?.email} • {selected.student?.phone}</p>
                 </div>
-                <div className="p-5 space-y-4">
-                  <div>
-                    <p className="text-xs text-gray-500">Student</p>
-                    <p className="font-semibold">{selected.studentName}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Room</p>
-                    <p className="font-semibold">{selected.room}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Description</p>
-                    <p className="text-sm text-gray-700 border border-gray-200 rounded-lg p-3 bg-gray-50">
-                      {selected.description}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Update Status</label>
-                    <select
-                      value={newStatus}
-                      onChange={(e) => setNewStatus(e.target.value as Complaint["status"])}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
-                    >
-                      <option>Pending</option>
-                      <option>In Progress</option>
-                      <option>Resolved</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Admin Response</label>
-                    <textarea
-                      rows={3}
-                      value={responseText}
-                      onChange={(e) => setResponseText(e.target.value)}
-                      placeholder="Write your response here..."
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black resize-none"
-                    />
-                  </div>
+                <div>
+                  <p className="text-xs text-gray-500">Category</p>
+                  <p className="font-semibold text-gray-900">{selected.category || "General"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Title</p>
+                  <p className="font-semibold text-gray-950">{selected.title}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Description</p>
+                  <p className="text-sm text-gray-700 border border-gray-200 rounded-lg p-3 bg-gray-50 whitespace-pre-wrap">
+                    {selected.description}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Update Status</label>
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value as Complaint["status"])}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-white"
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                  </select>
+                </div>
+                <div className="pt-2 flex gap-3">
                   <button
                     onClick={handleUpdate}
-                    className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gray-900 transition"
+                    disabled={updateMutation.isPending}
+                    className="flex-1 bg-black text-white py-2 rounded-xl text-sm font-medium hover:bg-gray-900 transition disabled:opacity-50"
                   >
-                    Save Response
+                    {updateMutation.isPending ? "Saving..." : "Save Status"}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(selected._id)}
+                    className="px-3 border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition"
+                    title="Delete"
+                  >
+                    <Trash2 size={15} />
                   </button>
                 </div>
               </div>
-            </>
+            </div>
           ) : (
             <div className="bg-white border border-gray-200 rounded-xl p-6 text-center text-gray-400 text-sm">
               Select a complaint to view details and respond.

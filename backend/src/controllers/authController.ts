@@ -175,6 +175,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
         full_name: user.full_name,
         email: user.email,
         role: user.role,
+        linked_student: user.linked_student,
       },
     });
 

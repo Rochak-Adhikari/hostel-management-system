@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getAllStudents } from "@/api/studentapi";
 import { getAllRooms } from "@/api/roomapi";
+import { getAllComplaints } from "@/api/complaintapi";
 
 export default function DashboardPage() {
   // ── DATA FETCHING 
@@ -24,6 +25,14 @@ export default function DashboardPage() {
     queryFn: getAllRooms,
   });
   const rooms = roomsData?.data ?? [];
+
+  const { data: complaintsData } = useQuery({
+    queryKey: ["complaints"],
+    queryFn: getAllComplaints,
+  });
+  const complaints = complaintsData?.data ?? [];
+  const pendingComplaintsCount = complaints.filter((c: any) => c.status === "Pending").length;
+  const recentComplaints = [...complaints].reverse().slice(0, 4);
 
   // ── DERIVED STATS (real data bata calculate garx) 
   const totalStudents = students.length;
@@ -68,9 +77,8 @@ export default function DashboardPage() {
       icon: CreditCard,
     },
     {
-      // MOCK - Complaint module banauna baki xa, so value is 0
       title: "Pending Complaints",
-      value: "0",
+      value: String(pendingComplaintsCount),
       danger: true,
       icon: AlertTriangle,
     },
@@ -209,14 +217,35 @@ export default function DashboardPage() {
 
         {/* Right Side */}
         <div className="xl:col-span-4 flex flex-col gap-6 min-w-0">
-          {/* Complaints - MOCK, Complaint module build garnu baki xa */}
+          {/* Complaints - REAL DATA */}
           <div className="bg-white border rounded-xl p-6">
             <h2 className="text-xl font-semibold mb-4">
               Recent Complaints
             </h2>
 
             <div className="space-y-4">
-              <p className="text-sm text-gray-400">No complaints yet — Complaint module not built.</p>
+              {recentComplaints.map((c: any) => (
+                <div key={c._id} className="border-b pb-2 last:border-0 last:pb-0">
+                  <div className="flex justify-between items-start gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{c.title}</p>
+                      <p className="text-xs text-gray-500">Student: {c.student?.full_name || "-"}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                      c.status === "Resolved"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : c.status === "In Progress"
+                        ? "bg-blue-100 text-blue-800"
+                        : "bg-amber-100 text-amber-800"
+                    }`}>
+                      {c.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {recentComplaints.length === 0 && (
+                <p className="text-sm text-gray-400">No complaints yet.</p>
+              )}
             </div>
           </div>
 

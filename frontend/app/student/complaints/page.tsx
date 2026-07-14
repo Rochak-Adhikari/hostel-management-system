@@ -1,94 +1,126 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, MessageSquareWarning } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { ComplaintSchema } from "@/schema/complaintschema";
+import { getComplaintsByStudent, createComplaint } from "@/api/complaintapi";
 
 type Complaint = {
-  id: string;
-  type: string;
+  _id: string;
   title: string;
   description: string;
-  date: string;
-  status: "PENDING" | "IN PROGRESS" | "RESOLVED";
-  adminResponse: string;
+  status: "Pending" | "In Progress" | "Resolved";
+  category?: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
-const initialComplaints: Complaint[] = [
-  {
-    id: "CMP-1045",
-    type: "Plumbing",
-    title: "Leaking Bathroom Tap",
-    description: "The tap in room A-001 is leaking continuously despite being shut tightly.",
-    date: "12 June 2026",
-    status: "IN PROGRESS",
-    adminResponse: "Technician has been assigned for inspection.",
-  },
-  {
-    id: "CMP-1042",
-    type: "Electricity",
-    title: "Ceiling Fan Sparking",
-    description: "The ceiling fan in my room is sparking near the junction box. It is a safety hazard.",
-    date: "10 June 2026",
-    status: "RESOLVED",
-    adminResponse: "Fan has been replaced. Please verify.",
-  },
-  {
-    id: "CMP-1039",
-    type: "Maintenance",
-    title: "Broken Bed Frame",
-    description: "One side of the bed frame is completely broken. I cannot sleep properly.",
-    date: "05 June 2026",
-    status: "PENDING",
-    adminResponse: "",
-  },
-];
-
 const STATUS_STYLES: Record<string, string> = {
-  "IN PROGRESS": "border-black text-black",
-  PENDING: "border-gray-400 text-gray-500",
-  RESOLVED: "bg-black text-white border-black",
+  "In Progress": "border-black text-black",
+  Pending: "border-gray-400 text-gray-500",
+  Resolved: "bg-black text-white border-black",
 };
 
 function StatusPill({ status }: { status: string }) {
   return (
-    <span className={`px-3 py-1 text-xs font-semibold rounded-full border whitespace-nowrap ${STATUS_STYLES[status]}`}>
-      {status}
+    <span className={`px-3 py-1 text-xs font-semibold rounded-full border whitespace-nowrap ${STATUS_STYLES[status] || "border-gray-300 text-gray-500"}`}>
+      {status.toUpperCase()}
     </span>
   );
 }
 
 const complaintTypes = ["Plumbing", "Electricity", "Maintenance", "WiFi / Internet", "Furniture", "Cleanliness", "Other"];
 
-export default function ComplaintsPage() {
-  const [complaints, setComplaints] = useState<Complaint[]>(initialComplaints);
-  const [selected, setSelected] = useState<Complaint | null>(complaints[0]);
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ type: "", title: "", description: "" });
+type ComplaintFormValues = {
+  category: string;
+  title: string;
+  description: string;
+};
 
-  function handleSubmit() {
-    if (!form.title.trim() || !form.description.trim()) return;
-    const newId = `CMP-${1046 + complaints.length}`;
-    const newComplaint: Complaint = {
-      id: newId,
-      type: form.type || "Other",
-      title: form.title,
-      description: form.description,
-      date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }),
-      status: "PENDING",
-      adminResponse: "",
-    };
-    setComplaints((prev) => [newComplaint, ...prev]);
-    setSelected(newComplaint);
-    setShowModal(false);
-    setForm({ type: "", title: "", description: "" });
-  }
+export default function ComplaintsPage() {
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<Complaint | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  // localStorage bata login garda save vaisako user info nikalne
+  const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+  const currentUser = storedUser ? JSON.parse(storedUser) : null;
+
+  // React hook form setup matching pattern in Rooms CRUD
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ComplaintFormValues>({
+    resolver: yupResolver(ComplaintSchema),
+    defaultValues: {
+      category: "",
+      title: "",
+      description: "",
+    },
+  });
+
+  // Query my complaints
+  const { data: complaintsRes, isPending, isError } = useQuery({
+    queryKey: ["myComplaints", currentUser?.id],
+    queryFn: () => getComplaintsByStudent(currentUser.id),
+    enabled: !!currentUser?.id,
+  });
+  const complaints: Complaint[] = complaintsRes?.data ?? [];
+
+  // Create complaint mutation
+  const createMutation = useMutation({
+    mutationFn: (newComplaint: any) => createComplaint(newComplaint),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["myComplaints", currentUser?.id] });
+      setShowModal(false);
+      reset();
+      alert("Complaint raised successfully.");
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || "Failed to submit complaint");
+    },
+  });
+
+  const onSubmit = (formData: ComplaintFormValues) => {
+    if (!currentUser?.id) {
+      alert("Please log in to raise a complaint.");
+      return;
+    }
+    createMutation.mutate({
+      student: currentUser.id,
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+    });
+  };
 
   const counts = {
     total: complaints.length,
-    pending: complaints.filter((c) => c.status === "PENDING").length,
-    inProgress: complaints.filter((c) => c.status === "IN PROGRESS").length,
-    resolved: complaints.filter((c) => c.status === "RESOLVED").length,
+    pending: complaints.filter((c) => c.status === "Pending").length,
+    inProgress: complaints.filter((c) => c.status === "In Progress").length,
+    resolved: complaints.filter((c) => c.status === "Resolved").length,
   };
+
+  if (!currentUser) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+        <p className="text-gray-500">Please log in to view complaints.</p>
+      </div>
+    );
+  }
+
+  if (isPending) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+        <p className="text-gray-500">Loading complaints...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -101,8 +133,11 @@ export default function ComplaintsPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-black text-white px-4 py-2.5 rounded-xl font-medium text-sm hover:bg-gray-900 transition shrink-0"
+          onClick={() => {
+            reset();
+            setShowModal(true);
+          }}
+          className="flex items-center gap-2 bg-black text-white px-4 py-2.5 rounded-xl font-medium text-sm hover:bg-gray-900 transition shrink-0 self-start sm:self-auto"
         >
           <Plus size={15} />
           Raise Complaint
@@ -128,27 +163,26 @@ export default function ComplaintsPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         {/* LEFT: Complaints list */}
         <div className="xl:col-span-2 space-y-4 sm:space-y-6">
-          {/* Recent Complaints */}
-          <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
             <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-              <h3 className="font-semibold">My Complaints</h3>
+              <h3 className="font-semibold text-gray-700">My Complaints</h3>
               <span className="text-xs text-gray-400">{complaints.length} total</span>
             </div>
-            <div>
+            <div className="divide-y divide-gray-100">
               {complaints.map((c) => (
                 <div
-                  key={c.id}
+                  key={c._id}
                   onClick={() => setSelected(c)}
-                  className={`p-4 sm:p-5 flex items-center justify-between border-b border-gray-200 cursor-pointer transition gap-3 ${
-                    selected?.id === c.id ? "bg-gray-50" : "hover:bg-gray-50"
+                  className={`p-4 sm:p-5 flex items-center justify-between cursor-pointer transition gap-3 ${
+                    selected?._id === c._id ? "bg-gray-50" : "hover:bg-gray-50"
                   }`}
                 >
                   <div className="flex flex-col gap-1 min-w-0">
-                    <span className="text-xs font-bold text-gray-500 uppercase truncate">
-                      {c.id} • {c.type}
+                    <span className="text-xs font-bold text-gray-400 uppercase truncate">
+                      {c.category || "General"} • {new Date(c.createdAt).toLocaleDateString("en-GB")}
                     </span>
-                    <h4 className="text-sm sm:text-base font-semibold text-black">{c.title}</h4>
-                    <p className="text-xs sm:text-sm text-gray-500">{c.date}</p>
+                    <h4 className="text-sm sm:text-base font-semibold text-gray-900 truncate">{c.title}</h4>
+                    <p className="text-xs text-gray-500 line-clamp-1">{c.description}</p>
                   </div>
                   <StatusPill status={c.status} />
                 </div>
@@ -161,25 +195,27 @@ export default function ComplaintsPage() {
 
           {/* Detail Panel — shows inline on mobile below list */}
           {selected && (
-            <section className="xl:hidden bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <section className="xl:hidden bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
               <div className="p-4 border-b border-gray-200 bg-gray-50">
-                <h3 className="font-semibold">Complaint Details: {selected.id}</h3>
+                <h3 className="font-semibold text-gray-700">Complaint Details</h3>
               </div>
               <div className="p-4 sm:p-5 space-y-4">
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Type</p>
-                  <p className="text-sm font-medium">{selected.type}</p>
+                  <p className="text-xs text-gray-500 mb-1">Type / Category</p>
+                  <p className="text-sm font-semibold text-gray-900">{selected.category || "General"}</p>
                 </div>
-                <p className="text-gray-700 text-sm">{selected.description}</p>
-                {selected.adminResponse && (
-                  <div className="p-4 border border-gray-200 rounded-xl bg-gray-50">
-                    <p className="text-sm font-semibold mb-1">Admin Response</p>
-                    <p className="text-sm text-gray-600 italic">{selected.adminResponse}</p>
-                  </div>
-                )}
-                {!selected.adminResponse && (
-                  <p className="text-sm text-gray-400 italic">Awaiting admin response.</p>
-                )}
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Title</p>
+                  <p className="text-sm font-semibold text-gray-900">{selected.title}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Description</p>
+                  <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-4 leading-relaxed whitespace-pre-wrap">{selected.description}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Status</p>
+                  <StatusPill status={selected.status} />
+                </div>
               </div>
             </section>
           )}
@@ -189,54 +225,60 @@ export default function ComplaintsPage() {
         <div className="space-y-4 sm:space-y-6">
           {/* Detail Panel — shows on xl only */}
           {selected && (
-            <section className="hidden xl:block bg-white border border-gray-200 rounded-2xl overflow-hidden">
-              <div className="p-4 border-b border-gray-200 bg-gray-50">
-                <h3 className="font-semibold">Complaint Details: {selected.id}</h3>
+            <section className="hidden xl:block bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                <h3 className="font-semibold text-gray-700">Complaint Details</h3>
+                <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-650">
+                  <X size={15} />
+                </button>
               </div>
               <div className="p-5 space-y-4">
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Type</p>
-                  <p className="text-sm font-medium">{selected.type}</p>
+                  <p className="text-xs text-gray-500 mb-1">Type / Category</p>
+                  <p className="text-sm font-semibold text-gray-900">{selected.category || "General"}</p>
                 </div>
-                <p className="text-gray-700 text-sm">{selected.description}</p>
-                {selected.adminResponse ? (
-                  <div className="p-4 border border-gray-200 rounded-xl bg-gray-50">
-                    <p className="text-sm font-semibold mb-2">Admin Response</p>
-                    <p className="text-sm text-gray-600 italic">{selected.adminResponse}</p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400 italic">Awaiting admin response.</p>
-                )}
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Title</p>
+                  <p className="text-sm font-semibold text-gray-900">{selected.title}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Description</p>
+                  <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-4 leading-relaxed whitespace-pre-wrap">{selected.description}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Status</p>
+                  <StatusPill status={selected.status} />
+                </div>
               </div>
             </section>
           )}
 
           {/* Quick Actions */}
-          <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
             <div className="p-4 border-b border-gray-200 bg-gray-50">
-              <h3 className="font-semibold">Quick Actions</h3>
+              <h3 className="font-semibold text-gray-700">Quick Actions</h3>
             </div>
             <div className="p-4 sm:p-5 space-y-3">
               <button
-                onClick={() => setShowModal(true)}
-                className="w-full border border-black rounded-xl py-2 text-sm hover:bg-gray-50 transition"
+                onClick={() => {
+                  reset();
+                  setShowModal(true);
+                }}
+                className="w-full border border-black rounded-xl py-2 text-sm hover:bg-gray-50 transition font-medium"
               >
                 Raise Complaint
-              </button>
-              <button className="w-full border border-black rounded-xl py-2 text-sm hover:bg-gray-50 transition">
-                Contact Office
               </button>
             </div>
           </section>
 
           {/* Emergency */}
-          <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
             <div className="p-4 border-b border-gray-200 bg-gray-50">
-              <h3 className="font-semibold">Emergency</h3>
+              <h3 className="font-semibold text-gray-700">Emergency</h3>
             </div>
             <div className="p-4 sm:p-5">
-              <p className="text-sm text-gray-500 mb-2">For urgent issues contact:</p>
-              <p className="text-lg font-bold">+977 9863564357</p>
+              <p className="text-sm text-gray-500 mb-2">For urgent issues contact Warden:</p>
+              <p className="text-lg font-bold text-gray-950">+977 9863564357</p>
             </div>
           </section>
         </div>
@@ -245,61 +287,76 @@ export default function ComplaintsPage() {
       {/* Raise Complaint Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg shadow-xl">
-            <div className="flex items-center justify-between p-5 border-b border-gray-200">
-              <h2 className="text-lg font-bold">Raise a Complaint</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg shadow-xl"
+          >
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50">
+              <h2 className="text-lg font-bold text-gray-800">Raise a Complaint</h2>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="p-1 rounded hover:bg-gray-150 text-gray-400 hover:text-gray-600"
+              >
                 <X size={18} />
               </button>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Complaint Type</label>
+                <label className="block text-xs text-gray-500 mb-1">Complaint Type / Category</label>
                 <select
-                  value={form.type}
-                  onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                  {...register("category")}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-white"
                 >
                   <option value="">Select type...</option>
-                  {complaintTypes.map((t) => <option key={t}>{t}</option>)}
+                  {complaintTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
+                {errors.category && (
+                  <p className="text-red-500 text-xs mt-1">{errors.category.message}</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Title</label>
                 <input
                   type="text"
                   placeholder="Brief title of the issue"
-                  value={form.title}
-                  onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                  {...register("title")}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
                 />
+                {errors.title && (
+                  <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Description</label>
                 <textarea
                   rows={4}
                   placeholder="Describe the issue in detail..."
-                  value={form.description}
-                  onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                  {...register("description")}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black resize-none"
                 />
+                {errors.description && (
+                  <p className="text-red-500 text-xs mt-1">{errors.description.message}</p>
+                )}
               </div>
             </div>
             <div className="p-5 pt-0 flex gap-3 justify-end">
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
                 className="px-5 py-2 border border-gray-300 rounded-xl text-sm hover:bg-gray-50 transition"
               >
                 Cancel
               </button>
               <button
-                onClick={handleSubmit}
-                className="px-5 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-900 transition"
+                type="submit"
+                disabled={createMutation.isPending}
+                className="px-5 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-900 transition disabled:opacity-50"
               >
-                Submit
+                {createMutation.isPending ? "Submitting..." : "Submit"}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </div>

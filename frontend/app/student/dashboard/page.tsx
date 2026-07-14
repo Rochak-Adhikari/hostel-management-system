@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getAllocationByStudent } from "@/api/allocationapi";
 import { getRoomById } from "@/api/roomapi";
+import { getComplaintsByStudent } from "@/api/complaintapi";
 
 // ── Static data (backend nabaneko modules ko lagi - Fee, Complaint, Visitor, Notice) ──
 const feeData = {
@@ -24,18 +25,7 @@ const feeData = {
   nextAmount: "Rs. 12,000",
 };
 
-const complaintsData = {
-  total: 3,
-  pending: 1,
-  inProgress: 1,
-  resolved: 1,
-};
-
-const recentComplaints = [
-  { title: "Leaking bathroom tap",    date: "12 Jun 2026", status: "In Progress" },
-  { title: "Ceiling fan sparking",    date: "10 Jun 2026", status: "Resolved" },
-  { title: "Broken bed frame",        date: "05 Jun 2026", status: "Pending" },
-];
+// MOCK arrays for visitors and notices (others will be real)
 
 const recentVisitors = [
   { name: "Ramesh Sharma",  purpose: "Family Visit",       date: "30 Jun 2026", checkOut: "6:45 PM" },
@@ -77,6 +67,19 @@ export default function DashboardPage() {
   });
   const room = roomData?.data;
 
+  // Real complaints fetching
+  const { data: complaintsDataRes } = useQuery({
+    queryKey: ["myComplaints", currentUser?.id],
+    queryFn: () => getComplaintsByStudent(currentUser.id),
+    enabled: !!currentUser?.id,
+  });
+  const myComplaints = complaintsDataRes?.data ?? [];
+  const complaintsTotal = myComplaints.length;
+  const complaintsPending = myComplaints.filter((c: any) => c.status === "Pending").length;
+  const complaintsInProgress = myComplaints.filter((c: any) => c.status === "In Progress").length;
+  const complaintsResolved = myComplaints.filter((c: any) => c.status === "Resolved").length;
+  const recentComplaints = [...myComplaints].reverse().slice(0, 3);
+
   const firstName = currentUser?.full_name?.split(" ")[0] ?? "Student";
 
   return (
@@ -109,8 +112,12 @@ export default function DashboardPage() {
               <ChevronRight size={13} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
             </div>
             <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">My Room</p>
-            <p className="text-xl font-black text-gray-900">{room?.RoomNumber ?? "Unassigned"}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{room?.RoomType ?? "No room yet"}</p>
+            <p className="text-xl font-black text-gray-900">
+              {room ? `${room.RoomNumber} (Bed ${allocation?.bed?.toUpperCase()})` : "Unassigned"}
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {room ? `Block ${room.block} · ${room.RoomType}` : "No room yet"}
+            </p>
           </div>
         </Link>
 
@@ -139,8 +146,8 @@ export default function DashboardPage() {
               <ChevronRight size={13} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
             </div>
             <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">Complaints</p>
-            <p className="text-xl font-black text-gray-900">{complaintsData.total}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{complaintsData.pending} pending</p>
+            <p className="text-xl font-black text-gray-900">{complaintsTotal}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{complaintsPending} pending</p>
           </div>
         </Link>
 
@@ -177,6 +184,8 @@ export default function DashboardPage() {
             <div className="p-5 grid grid-cols-2 gap-4">
               {[
                 ["Room Number",   room.RoomNumber],
+                ["Block",         `Block ${room.block}`],
+                ["Bed",           `Bed ${allocation?.bed?.toUpperCase()}`],
                 ["Room Type",     room.RoomType],
                 ["Floor",         room.Floor],
                 ["Monthly Fee",   `Rs. ${room.MonthlyFee.toLocaleString()}`],
@@ -251,9 +260,9 @@ export default function DashboardPage() {
 
           <div className="px-5 py-3 border-b border-gray-100 flex gap-2">
             {[
-              ["Pending", complaintsData.pending],
-              ["In Progress", complaintsData.inProgress],
-              ["Resolved", complaintsData.resolved],
+              ["Pending", complaintsPending],
+              ["In Progress", complaintsInProgress],
+              ["Resolved", complaintsResolved],
             ].map(([label, count]) => (
               <span key={String(label)} className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${STATUS_PILL[String(label)]}`}>
                 {label} · {count}
@@ -262,11 +271,11 @@ export default function DashboardPage() {
           </div>
 
           <div className="divide-y divide-gray-100">
-            {recentComplaints.map((c, i) => (
-              <div key={i} className="px-5 py-3.5 flex items-center justify-between gap-3">
+            {recentComplaints.map((c: any, i) => (
+              <div key={c._id || i} className="px-5 py-3.5 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{c.title}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">{c.date}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">{new Date(c.createdAt).toLocaleDateString("en-GB")}</p>
                 </div>
                 <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${STATUS_PILL[c.status]}`}>
                   {c.status}

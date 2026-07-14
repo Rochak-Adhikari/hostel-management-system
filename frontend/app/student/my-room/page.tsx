@@ -117,12 +117,14 @@ export default function MyRoomPage() {
                 <span className="text-5xl md:text-6xl font-black text-white leading-none">{room.RoomNumber}</span>
                 <div className="pb-0.5">
                   <p className="text-base font-semibold text-white/80">{room.RoomType}</p>
-                  <p className="text-xs text-white/50">{room.Floor}</p>
+                  <p className="text-xs text-white/50">{room.Floor} · Block {room.block} · Bed {allocation.bed?.toUpperCase()}</p>
                 </div>
               </div>
 
               <div className="flex flex-row flex-wrap md:flex-col gap-x-5 gap-y-1.5 md:text-right">
                 {[
+                  ["Block",       `Block ${room.block}`],
+                  ["Bed",         `Bed ${allocation.bed?.toUpperCase()}`],
                   ["Monthly Fee", `Rs. ${room.MonthlyFee.toLocaleString()}`],
                   ["Allocated",   allocation.allocatedDate ? new Date(allocation.allocatedDate).toLocaleDateString() : "-"],
                   ["Capacity",    `${room.Occupied}/${room.Capacity} Occupied`],
@@ -149,11 +151,10 @@ export default function MyRoomPage() {
         </div>
       </div>
 
-      {/* ── 4 Stat Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard icon={Bed}         label="Room Number" value={room.RoomNumber} accent />
+        <StatCard icon={Bed}         label="Room / Bed" value={`${room.RoomNumber} (Bed ${allocation.bed?.toUpperCase()})`} accent />
+        <StatCard icon={Building2}   label="Block"       value={`Block ${room.block}`} />
         <StatCard icon={Users}       label="Room Type"   value={room.RoomType} />
-        <StatCard icon={Building2}   label="Floor"       value={room.Floor} />
         <StatCard icon={CheckCircle} label="Status"      value={status} />
       </div>
 

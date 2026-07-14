@@ -1,6 +1,6 @@
 
 import mongoose from "mongoose";
-import { RoomType } from "../types/enum";
+import { RoomType, Block } from "../types/enum";
 
 const roomSchema = new mongoose.Schema(
   {
@@ -9,7 +9,16 @@ const roomSchema = new mongoose.Schema(
       required: [true, "Room number is required"],
       unique: true,
       trim: true,
-      match: [/^[AB]-/i, "Room number must start with A- (Boys) or B- (Girls)"],
+    },
+
+    block: {
+      type: String,
+      required: [true, "Block is required"],
+      trim: true,
+      enum: {
+        values: Object.values(Block),
+        message: "Block must be A, B, C, D, or E",
+      },
     },
 
     Floor: {
