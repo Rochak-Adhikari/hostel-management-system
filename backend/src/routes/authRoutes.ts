@@ -1,6 +1,6 @@
 import express from "express";
 
-import { register, login } from "../controllers/authController";
+import { register, login, verifyOtp, resendOtp } from "../controllers/authController";
 
 
 
@@ -14,6 +14,12 @@ const router = express.Router();
 
 router.post("/register", register);
 
+//Otp verification ko route
+router.post("/verify-otp", verifyOtp);
+
+//resend otp ko route
+
+router.post("/resend-otp", resendOtp);
 
 //login ko route
 
