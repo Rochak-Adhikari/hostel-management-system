@@ -76,10 +76,10 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
     
     const otp_hash = await hashText(otp);
     const otp_expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
-    user.otp = otp_hash;
+    user.otp_hash = otp_hash;
     user.otp_expiry = otp_expiry;
 
-   sendEmail({
+    await sendEmail({
      to: user.email,
      subject: "OTP for Email Verification",
      html: `
