@@ -5,8 +5,8 @@ import Allocation from "../models/Allocation";
 import Room from "../models/Room";
 import { getBedList } from "../utils/bedUtils";
 
-// CREATE ALLOCATION
-// euta student lai euta room allocate garna ko lagi
+
+
 export const createAllocation = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { student, room, bed, allocatedDate } = req.body;
@@ -20,31 +20,29 @@ export const createAllocation = async (req: Request, res: Response, next: NextFu
       );
     }
 
-    // find garya room lai fetch garne, capacity check garnu ko lagi
+  
     const existingRoom = await Room.findById(room);
     if (!existingRoom) {
       throw new AppError("Room Not Found", 404, ErrorCodes.ROOM_NOT_FOUND);
     }
 
-    // room ma space cha ki chaina check garne
     if (existingRoom.Occupied >= existingRoom.Capacity) {
       throw new AppError("Room is full", 400, ErrorCodes.ROOM_FULL);
     }
 
-    // Validate requested bed
+  
     const validBeds = getBedList(existingRoom.Capacity);
     if (!validBeds.includes(bed)) {
       throw new AppError("Invalid bed for this room's capacity", 400, ErrorCodes.VALIDATION_ERROR);
     }
 
-    // Check if the bed is already taken in this room
     const existingAllocations = await Allocation.find({ room: existingRoom._id });
     const takenBeds = existingAllocations.map((a) => a.bed);
     if (takenBeds.includes(bed)) {
       throw new AppError("This bed is already occupied", 400, ErrorCodes.VALIDATION_ERROR);
     }
 
-    // student lai pahile dekhi kunai room allocate vaisako cha ki check garne
+  
     const existingAllocation = await Allocation.findOne({ student });
     if (existingAllocation) {
       throw new AppError(
@@ -63,7 +61,7 @@ export const createAllocation = async (req: Request, res: Response, next: NextFu
 
     await allocation.save();
 
-    // allocation vaisake pachi room ko Occupied count 1 le badhaune
+   
     existingRoom.Occupied += 1;
     await existingRoom.save();
 
@@ -91,7 +89,6 @@ export const createAllocation = async (req: Request, res: Response, next: NextFu
   }
 };
 
-// student ko id ko basis ma tesko allocation (room) fetch garna ko lagi
 export const getAllocationByStudent = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { studentId } = req.params;
@@ -114,7 +111,6 @@ export const getAllocationByStudent = async (req: Request, res: Response, next: 
   }
 };
 
-// Sabai allocation fetch garna ko lagi
 export const getALLAllocations = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const allocations = await Allocation.find({});
@@ -131,7 +127,6 @@ export const getALLAllocations = async (req: Request, res: Response, next: NextF
   }
 };
 
-// allocation ko id ko basis ma euta allocation fetch garna ko lagi
 export const getAllocationByID = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
@@ -158,7 +153,6 @@ export const getAllocationByID = async (req: Request, res: Response, next: NextF
   }
 };
 
-// Allocation haru update garna ko lagi
 export const updateAllocation = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
@@ -197,7 +191,6 @@ export const updateAllocation = async (req: Request, res: Response, next: NextFu
   }
 };
 
-// allocation haru delete garna ko lagi (student ko room khali garda)
 export const deleteAllocation = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
@@ -212,7 +205,7 @@ export const deleteAllocation = async (req: Request, res: Response, next: NextFu
       );
     }
 
-    // allocation hatisake pachi tyo room ko Occupied count 1 le ghataune
+    e
     const room = await Room.findById(deletedAllocation.room);
     if (room && room.Occupied > 0) {
       room.Occupied -= 1;
@@ -231,7 +224,7 @@ export const deleteAllocation = async (req: Request, res: Response, next: NextFu
   }
 };
 
-// Room ko available beds fetch garna ko lagi
+
 export const getAvailableBeds = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { roomId } = req.params;
@@ -255,7 +248,7 @@ export const getAvailableBeds = async (req: Request, res: Response, next: NextFu
   }
 };
 
-// specific room ko sabai allocations haru fetch garna roommates logic ko lagi
+
 export const getAllocationsByRoom = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { roomId } = req.params;

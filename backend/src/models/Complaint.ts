@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
 import { ComplaintStatus } from "../types/enum";
 
-// student le raise gareko complaint record schema
+
 const complaintSchema = new mongoose.Schema(
   {
-    // kun student le complaint gareko ho, tesko ref pathauna
+  
     student: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,  //->this field points to the data which lives somewhere else kinda like pointer jasto 
       ref: "User",
       required: [true, "Student is required"],
     },

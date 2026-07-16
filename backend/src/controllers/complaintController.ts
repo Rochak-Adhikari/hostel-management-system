@@ -4,12 +4,12 @@ import { AppError } from "../middleware/errorhandlermiddleware";
 import { ErrorCodes } from "../types/enum";
 
 // CREATE COMPLAINT
-// student le naya complaint dartaa (create) garna ko lagi
+// student le new complaint create garna ko lagi
 export const createComplaint = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { student, title, description, category } = req.body;
 
-    // validation garne
+    
     if (!student || !title || !description) {
       throw new AppError(
         "Student, Title, and Description are required",
@@ -39,10 +39,10 @@ export const createComplaint = async (req: Request, res: Response, next: NextFun
 };
 
 // GET ALL COMPLAINTS
-// admin ko lagi sabai complaints list fetch garna
+
 export const getAllComplaints = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // student ko full name details populate garera fetch garne
+    // student ko full name details populate garera fetch garna ko lagi 
     const complaints = await Complaint.find({}).populate("student", "full_name email phone");
 
     return res.status(200).json({
@@ -56,8 +56,8 @@ export const getAllComplaints = async (req: Request, res: Response, next: NextFu
   }
 };
 
-// GET COMPLAINT BY ID
-// id ko basis ma specific complaint detail page ko lagi
+
+
 export const getComplaintById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
@@ -79,8 +79,7 @@ export const getComplaintById = async (req: Request, res: Response, next: NextFu
   }
 };
 
-// GET COMPLAINTS BY STUDENT ID
-// student specific or guardian ko dashboard ko lagi complaints fetch garne
+
 export const getComplaintsByStudent = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { studentId } = req.params;
@@ -98,8 +97,7 @@ export const getComplaintsByStudent = async (req: Request, res: Response, next: 
   }
 };
 
-// UPDATE COMPLAINT
-// complaint ko status status update garna (Resolved/In Progress) admin ko batabata
+
 export const updateComplaint = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
@@ -128,8 +126,7 @@ export const updateComplaint = async (req: Request, res: Response, next: NextFun
   }
 };
 
-// DELETE COMPLAINT
-// complaint record delete garna ko lagi
+
 export const deleteComplaint = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;

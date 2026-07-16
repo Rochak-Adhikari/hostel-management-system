@@ -18,6 +18,12 @@ export enum ErrorCodes {
   ALLOCATION_ALREADY_EXISTS = "Allocation Already Exists",
   ALLOCATION_NOT_AVAILABLE = "Allocation Not Available",
   ALLOCATION_FULL = "Room Full",
+  COMPLAINT_NOT_FOUND = "Complaint Not Found",
+  NOTICE_NOT_FOUND = "Notice Not Found",
+  NOTICE_ALREADY_EXISTS = "Notice Already Exists",
+  NOTICE_NOT_AVAILABLE = "Notice Not Available",
+  NOTICE_FULL = "Notice Full",
+  
 }
 
 export enum RoomType {
@@ -44,4 +50,11 @@ export enum ComplaintStatus {
   PENDING = "Pending",
   IN_PROGRESS = "In Progress",
   RESOLVED = "Resolved",
+}
+
+export enum NoticeCategory {
+  GENERAL = "General",
+  MAINTENANCE = "Maintenance",
+  FEE = "Fee",
+  EVENT = "Event",
 }
