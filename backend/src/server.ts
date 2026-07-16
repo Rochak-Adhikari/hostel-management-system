@@ -20,7 +20,7 @@ import profileRoutes from "./routes/profileRoutes";
 import complaintRoutes from "./routes/complaintRoutes";
 import noticeRoutes from "./routes/noticeRoutes";
 import visitorRoutes from "./routes/visitorRoutes";
-
+import feeRoutes from "./routes/feeRoutes";
 
 
 
@@ -55,6 +55,7 @@ app.use("/api/v1/profile", profileRoutes);
 app.use("/api/v1/complaints", complaintRoutes);
 app.use("/api/v1/notices", noticeRoutes);
 app.use("/api/v1/visitors", visitorRoutes);
+app.use("/api/v1/fees", feeRoutes);
 
 // path not found error ko lagi
 app.use(( req:Request, res:Response, next:NextFunction)=>{

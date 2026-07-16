@@ -27,6 +27,10 @@ export enum ErrorCodes {
   VISITOR_ALREADY_EXISTS = "Visitor Already Exists",
   VISITOR_NOT_AVAILABLE = "Visitor Not Available",
   VISITOR_FULL = "Visitor Full",
+  FEE_NOT_FOUND = "Fee Not Found",
+  FEE_ALREADY_EXISTS = "Fee Already Exists",
+  FEE_NOT_AVAILABLE = "Fee Not Available",
+  FEE_FULL = "Fee Full",
 }
 
 export enum RoomType {
@@ -60,4 +64,10 @@ export enum NoticeCategory {
   MAINTENANCE = "Maintenance",
   FEE = "Fee",
   EVENT = "Event",
+}
+
+export enum feeStatus {
+  UNPAID = "Unpaid",
+  PAID = "Paid",
+  OVERDUE = "Overdue",
 }
