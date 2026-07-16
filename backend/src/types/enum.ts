@@ -23,7 +23,10 @@ export enum ErrorCodes {
   NOTICE_ALREADY_EXISTS = "Notice Already Exists",
   NOTICE_NOT_AVAILABLE = "Notice Not Available",
   NOTICE_FULL = "Notice Full",
-  
+  VISITOR_NOT_FOUND = "Visitor Not Found",
+  VISITOR_ALREADY_EXISTS = "Visitor Already Exists",
+  VISITOR_NOT_AVAILABLE = "Visitor Not Available",
+  VISITOR_FULL = "Visitor Full",
 }
 
 export enum RoomType {
