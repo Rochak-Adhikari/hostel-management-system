@@ -31,6 +31,10 @@ export enum ErrorCodes {
   FEE_ALREADY_EXISTS = "Fee Already Exists",
   FEE_NOT_AVAILABLE = "Fee Not Available",
   FEE_FULL = "Fee Full",
+  ROOM_CHANGE_REQUEST_NOT_FOUND = "Room Change Request Not Found",
+  ROOM_CHANGE_REQUEST_ALREADY_EXISTS = "Room Change Request Already Exists",
+  ROOM_CHANGE_REQUEST_NOT_AVAILABLE = "Room Change Request Not Available",
+  ROOM_CHANGE_REQUEST_FULL = "Room Change Request Full",
 }
 
 export enum RoomType {
@@ -57,6 +61,11 @@ export enum ComplaintStatus {
   PENDING = "Pending",
   IN_PROGRESS = "In Progress",
   RESOLVED = "Resolved",
+}
+export enum RoomChangeStatus {
+  PENDING = "Pending",
+  APPROVED = "Approved",
+  REJECTED = "Rejected",
 }
 
 export enum NoticeCategory {
