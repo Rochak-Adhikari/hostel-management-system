@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
-import {  RoomChangeStatus } from "../types/enum";
+import { RoomChangeStatus } from "../types/enum";
 
 
 const roomChangeRequestSchema = new mongoose.Schema(
   {
-  
+
     student: {
       type: mongoose.Schema.Types.ObjectId,  //->this field points to the data which lives somewhere else kinda like pointer jasto 
       ref: "User",
@@ -28,7 +28,7 @@ const roomChangeRequestSchema = new mongoose.Schema(
       type: String,
       enum: {
         values: Object.values(RoomChangeStatus),
-        message: "Status must be Pending, In Progress, or Resolved",
+        message: "Status must be Pending, Approved, or Rejected",
       },
       default: RoomChangeStatus.PENDING,
     },

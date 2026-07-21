@@ -7,8 +7,8 @@ import cors from "cors";
 
 
 
-import { AppError, errorHandler } from "./middleware/errorhandlermiddleware"; 
-import {ErrorCodes} from "./types/enum";
+import { AppError, errorHandler } from "./middleware/errorhandlermiddleware";
+import { ErrorCodes } from "./types/enum";
 
 
 //! routes ko import haru
@@ -21,6 +21,7 @@ import complaintRoutes from "./routes/complaintRoutes";
 import noticeRoutes from "./routes/noticeRoutes";
 import visitorRoutes from "./routes/visitorRoutes";
 import feeRoutes from "./routes/feeRoutes";
+import roomChangeRequestRoutes from "./routes/roomChangeRequestRoutes";
 
 
 
@@ -37,16 +38,16 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
 //root ko route
-app.get("/", (req:Request, res:Response) => {  
-  res.status(200).json({ 
-    message: "Server is up and running" ,
-  });  
+app.get("/", (req: Request, res: Response) => {
+  res.status(200).json({
+    message: "Server is up and running",
+  });
 });
 
 
 
 
- // using routes
+// using routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/rooms", roomRoutes);
@@ -56,19 +57,20 @@ app.use("/api/v1/complaints", complaintRoutes);
 app.use("/api/v1/notices", noticeRoutes);
 app.use("/api/v1/visitors", visitorRoutes);
 app.use("/api/v1/fees", feeRoutes);
+app.use("/api/v1/room-change-requests", roomChangeRequestRoutes);
 
 // path not found error ko lagi
-app.use(( req:Request, res:Response, next:NextFunction)=>{
-  
- 
+app.use((req: Request, res: Response, next: NextFunction) => {
+
+
   const message = `Cannot ${req.method} on ${req.url}`;
 
- const error= new AppError(
-  message, 404,
-   ErrorCodes.NOT_FOUND);
+  const error = new AppError(
+    message, 404,
+    ErrorCodes.NOT_FOUND);
   next(error)
-  
-  }
+
+}
 )
 
 //error handler ko middleware
