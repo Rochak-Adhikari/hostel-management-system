@@ -4,6 +4,7 @@ dotenv.config();
 import express, { NextFunction, Request, Response } from "express";
 import connectDB from "./config/db";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 
 
 
@@ -36,6 +37,7 @@ connectDB();
 app.use(cors());
 //using middleware
 app.use(express.json({ limit: "10mb" }));
+app.use(cookieParser());
 
 //root ko route
 app.get("/", (req: Request, res: Response) => {

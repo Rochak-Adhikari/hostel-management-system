@@ -175,6 +175,8 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
         email: user.email,
         role: user.role,
      });
+     
+     console.log("COOKIE_EXPIRES_IN value:", ENV_CONFIG.COOKIE_EXPIRES_IN, typeof ENV_CONFIG.COOKIE_EXPIRES_IN);
 
     return res.cookie("accessToken", accessToken,{
       httpOnly:ENV_CONFIG.NODE_ENV === "development" ? false : true,
