@@ -2,10 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import LoginForm from "@/components/form/login";
 import BackButton from "@/components/backbutton/back";
 
-export default function LoginPage() {
+function LoginPageContent() {
+  const searchParams = useSearchParams();
+  const justVerified = searchParams.get("verified") === "true";
+
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12 font-poppins">
       <div
@@ -32,6 +37,12 @@ export default function LoginPage() {
           LOG IN
         </h1>
 
+        {justVerified && (
+          <p className="text-green-600 text-xs text-center bg-green-50 w-fit mx-auto px-3 py-1.5 rounded mb-4">
+            Email verified successfully. You can now log in.
+          </p>
+        )}
+
         <LoginForm />
 
         <p className="text-center text-black text-base mt-4">
@@ -42,5 +53,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-4 text-sm text-gray-500">Loading...</div>}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

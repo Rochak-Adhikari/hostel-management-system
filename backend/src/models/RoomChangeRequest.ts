@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { RoomChangeStatus } from "../types/enum";
+import { RoomChangeStatus, RoomType } from "../types/enum";
 
 
 const roomChangeRequestSchema = new mongoose.Schema(
@@ -21,6 +21,16 @@ const roomChangeRequestSchema = new mongoose.Schema(
       type: String,
       required: [true, "Reason is required"],
       trim: true,
+    },
+
+    preferredRoomType: {
+      type: String,
+      required: [true, "Preferred Room Type is required"],
+      trim: true,
+      enum: {
+        values: Object.values(RoomType),
+        message: "Room type must be Single, Double, Triple, or Quadruple",
+      },
     },
 
     // complaint ko status (Pending, In Progress, Resolved)

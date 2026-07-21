@@ -7,10 +7,10 @@ import RoomChangeRequest from "../models/RoomChangeRequest";
 
 export const createRoomChangeRequest = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { student, currentRoom, reason } = req.body;
+    const { student, currentRoom, reason, preferredRoomType } = req.body;
 
     // validation - adminNote yaha chaidaina, tyo admin le pachi bharne ho
-    if (!student || !currentRoom || !reason) {
+    if (!student || !currentRoom || !reason || !preferredRoomType) {
       throw new AppError(
         "All fields are required",
         400,
@@ -36,6 +36,7 @@ export const createRoomChangeRequest = async (req: Request, res: Response, next:
       student,
       currentRoom,
       reason,
+      preferredRoomType,
     });
 
     await roomChange.save();
@@ -68,7 +69,10 @@ export const createRoomChangeRequest = async (req: Request, res: Response, next:
 // Sabai room change request fetch garna ko lagi
 export const getALLRoomChangeRequests = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const roomChangeRequests = await RoomChangeRequest.find({}).sort({ createdAt: -1 });
+    const roomChangeRequests = await RoomChangeRequest.find({})
+      .populate("student", "full_name email phone")
+      .populate("currentRoom", "RoomNumber block Floor")
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       message: "Room Change Requests Fetched Successfully",

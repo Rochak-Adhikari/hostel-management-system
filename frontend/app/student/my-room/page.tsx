@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Bed,
   Building2,
@@ -13,12 +14,18 @@ import {
   CalendarDays,
   CreditCard,
   MessageSquareWarning,
+  ArrowRightLeft,
+  X,
 } from "lucide-react";
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import { getAllocationByStudent, getAllocationsByRoom } from "@/api/allocationapi";
 import { getRoomById } from "@/api/roomapi";
 import { getComplaintsByStudent } from "@/api/complaintapi";
 import { getStudentById } from "@/api/studentapi";
+import { getRoomChangeRequestsByStudent, createRoomChangeRequest } from "@/api/roomChangeRequestApi";
 
 // Room guidelines - yo hardcoded nai rakhya, kina bhane sabai room ko lagi same rule ho, database ma rakhnu jaruri xaina
 const guidelines = [
@@ -28,6 +35,23 @@ const guidelines = [
   { icon: Clock,       text: "Guests allowed between 10:00 AM and 8:00 PM only. No overnight stays." },
   { icon: Plug,        text: "High-wattage appliances (heaters, hot plates) are strictly prohibited." },
 ];
+
+// Room change request form ko validation schema
+const roomChangeSchema = yup.object({
+  reason: yup.string().required("Reason is required").min(10, "Please provide at least 10 characters"),
+  preferredRoomType: yup.string().required("Preferred room type is required"),
+});
+
+type RoomChangeFormValues = {
+  reason: string;
+  preferredRoomType: string;
+};
+
+const STATUS_STYLES: Record<string, string> = {
+  Pending: "border-gray-400 text-gray-500",
+  Approved: "bg-black text-white border-black",
+  Rejected: "border-red-400 text-red-500",
+};
 
 function StatCard({
   icon: Icon, label, value, accent = false,
@@ -49,9 +73,23 @@ function StatCard({
 }
 
 export default function MyRoomPage() {
+  const queryClient = useQueryClient();
+  const [showRoomChangeModal, setShowRoomChangeModal] = useState(false);
+
   // localStorage bata login garda save vaisako user info nikalne
   const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
   const currentUser = storedUser ? JSON.parse(storedUser) : null;
+
+  // react-hook-form room change request ko lagi
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<RoomChangeFormValues>({
+    resolver: yupResolver(roomChangeSchema),
+    defaultValues: { reason: "", preferredRoomType: "" },
+  });
 
   // yo student ko allocation (room) fetch garne
   const { data: allocationData, isPending: allocationPending, isError: allocationError } = useQuery({
@@ -121,6 +159,39 @@ export default function MyRoomPage() {
   });
   const complaints = complaintsRes?.data ?? [];
   const recentComplaints = [...complaints].reverse().slice(0, 3);
+
+  // Yo student ko room change requests fetch garne
+  const { data: roomChangeRes } = useQuery({
+    queryKey: ["myRoomChangeRequests", currentUser?.id],
+    queryFn: () => getRoomChangeRequestsByStudent(currentUser.id),
+    enabled: !!currentUser?.id,
+  });
+  const roomChangeRequests: any[] = roomChangeRes?.data ?? [];
+  const pendingRequest = roomChangeRequests.find((r: any) => r.status === "Pending");
+  const pastRequests = roomChangeRequests.filter((r: any) => r.status !== "Pending");
+
+  // Room change request create garne mutation
+  const createRoomChangeMutation = useMutation({
+    mutationFn: (data: any) => createRoomChangeRequest(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["myRoomChangeRequests", currentUser?.id] });
+      setShowRoomChangeModal(false);
+      reset();
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || "Failed to submit room change request");
+    },
+  });
+
+  const onSubmitRoomChange = (formData: RoomChangeFormValues) => {
+    if (!currentUser?.id || !room?._id) return;
+    createRoomChangeMutation.mutate({
+      student: currentUser.id,
+      currentRoom: room._id,
+      reason: formData.reason,
+      preferredRoomType: formData.preferredRoomType,
+    });
+  };
 
   // login vayeko chaina bhane
   if (!currentUser) {
@@ -343,6 +414,146 @@ export default function MyRoomPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Room Change Request Section ── */}
+      {room && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ArrowRightLeft size={15} className="text-gray-600" />
+              <h2 className="text-sm font-semibold text-gray-700">Room Change Request</h2>
+            </div>
+            {!pendingRequest && (
+              <button
+                onClick={() => {
+                  reset();
+                  setShowRoomChangeModal(true);
+                }}
+                className="text-xs font-bold bg-black text-white px-3 py-1.5 rounded-lg hover:bg-gray-900 transition"
+              >
+                Request Change
+              </button>
+            )}
+          </div>
+          <div className="p-5 space-y-4">
+            {/* Pending request indicator */}
+            {pendingRequest && (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-bold text-gray-500 uppercase">Pending Request</p>
+                  <span className="px-3 py-1 text-xs font-semibold rounded-full border border-gray-400 text-gray-500">PENDING</span>
+                </div>
+                {pendingRequest.preferredRoomType && (
+                  <p className="text-xs font-semibold text-gray-700 mb-1">Preferred Type: {pendingRequest.preferredRoomType}</p>
+                )}
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{pendingRequest.reason}</p>
+                <p className="text-[10px] text-gray-400 mt-2">Submitted: {new Date(pendingRequest.createdAt).toLocaleDateString("en-GB")}</p>
+              </div>
+            )}
+
+            {/* Past requests history */}
+            {pastRequests.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase mb-2">Past Requests</p>
+                <div className="divide-y divide-gray-100">
+                  {pastRequests.map((r: any) => (
+                    <div key={r._id} className="py-3 first:pt-0 last:pb-0 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        {r.preferredRoomType && (
+                          <p className="text-xs font-semibold text-gray-700 mb-0.5">Preferred Type: {r.preferredRoomType}</p>
+                        )}
+                        <p className="text-sm text-gray-700 truncate">{r.reason}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{new Date(r.createdAt).toLocaleDateString("en-GB")}</p>
+                        {r.adminNote && (
+                          <p className="text-xs text-gray-500 mt-1 italic">Admin: {r.adminNote}</p>
+                        )}
+                      </div>
+                      <span className={`px-3 py-1 text-xs font-semibold rounded-full border whitespace-nowrap shrink-0 ${STATUS_STYLES[r.status] || "border-gray-300 text-gray-500"}`}>
+                        {r.status.toUpperCase()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!pendingRequest && pastRequests.length === 0 && (
+              <p className="text-xs text-gray-400 italic">No room change requests submitted yet.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Room Change Request Modal */}
+      {showRoomChangeModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <form
+            onSubmit={handleSubmit(onSubmitRoomChange)}
+            className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg shadow-xl"
+          >
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50">
+              <h2 className="text-lg font-bold text-gray-800">Request Room Change</h2>
+              <button
+                type="button"
+                onClick={() => setShowRoomChangeModal(false)}
+                className="p-1 rounded hover:bg-gray-150 text-gray-400 hover:text-gray-600"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Current Room</p>
+                <p className="text-sm font-semibold text-gray-900">{room?.RoomNumber} — Block {room?.block}, Bed {allocation?.bed?.toUpperCase()}</p>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Preferred Room Type</label>
+                <select
+                  {...register("preferredRoomType")}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-white"
+                >
+                  <option value="">Select type...</option>
+                  <option value="Single">Single</option>
+                  <option value="Double">Double</option>
+                  <option value="Triple">Triple</option>
+                  <option value="Quadruple">Quadruple</option>
+                </select>
+                {errors.preferredRoomType && (
+                  <p className="text-red-500 text-xs mt-1">{errors.preferredRoomType.message}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Reason for Change</label>
+                <textarea
+                  rows={4}
+                  placeholder="Explain why you'd like a room change..."
+                  {...register("reason")}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black resize-none"
+                />
+                {errors.reason && (
+                  <p className="text-red-500 text-xs mt-1">{errors.reason.message}</p>
+                )}
+              </div>
+            </div>
+            <div className="p-5 pt-0 flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowRoomChangeModal(false)}
+                className="px-5 py-2 border border-gray-300 rounded-xl text-sm hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={createRoomChangeMutation.isPending}
+                className="px-5 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-900 transition disabled:opacity-50"
+              >
+                {createRoomChangeMutation.isPending ? "Submitting..." : "Submit Request"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { ErrorCodes } from "../types/enum";
 import { createOtp } from "../utils/otputils";
 import sendEmail from "../utils/nodemailer";
 import { otpVerificationHTML } from "../utils/email";
+import { signAccessToken } from "../utils/jwtUtils";
 
 
 // REGISTER
@@ -166,6 +167,14 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       );
     }
 
+    //generate JWT token
+    const accessToken = signAccessToken({
+       
+        id: user._id,
+        email: user.email,
+        role: user.role,
+     });
+
     return res.status(200).json({
       message: "Logged In Successfully",
       code: "success",
@@ -177,6 +186,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
         role: user.role,
         linked_student: user.linked_student,
       },
+      accessToken,
     });
 
   } catch (error: any) {

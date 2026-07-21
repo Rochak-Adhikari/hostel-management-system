@@ -205,7 +205,7 @@ export const deleteAllocation = async (req: Request, res: Response, next: NextFu
       );
     }
 
-    e
+    // allocation hatisake pachi tyo room ko Occupied count 1 le ghataune
     const room = await Room.findById(deletedAllocation.room);
     if (room && room.Occupied > 0) {
       room.Occupied -= 1;

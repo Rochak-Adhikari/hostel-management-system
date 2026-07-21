@@ -1,7 +1,7 @@
 export const ENV_CONFIG = {
   PORT: process.env.PORT || 8080,
   NODE_ENV: process.env.NODE_ENV || "development",
-  JWT_SECRET: process.env.JWT_SECRET || "",
+
 
 
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
@@ -13,5 +13,9 @@ export const ENV_CONFIG = {
   SMTP_PORT: process.env.SMTP_PORT || "",
   SMTP_USER: process.env.SMTP_USER || "",
   SMTP_PASSWORD: process.env.SMTP_PASS || "",
- 
+
+JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
+JWT_SECRET: process.env.JWT_SECRET || "",
+
+
 };
