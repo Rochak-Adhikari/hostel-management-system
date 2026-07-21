@@ -7,6 +7,7 @@ import { createOtp } from "../utils/otputils";
 import sendEmail from "../utils/nodemailer";
 import { otpVerificationHTML } from "../utils/email";
 import { signAccessToken } from "../utils/jwtUtils";
+import { ENV_CONFIG } from "../config/env.config";
 
 
 // REGISTER
@@ -175,7 +176,12 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
         role: user.role,
      });
 
-    return res.status(200).json({
+    return res.cookie("accessToken", accessToken,{
+      httpOnly:ENV_CONFIG.NODE_ENV === "development" ? false : true,
+      sameSite:ENV_CONFIG.NODE_ENV === "development" ? "lax" : "none",
+      secure:ENV_CONFIG.NODE_ENV === "development" ? false : true,
+      maxAge:Number(ENV_CONFIG.COOKIE_EXPIRES_IN || '7') * 24 * 60 * 60 * 1000, // convert days to milliseconds
+    }).status(200).json({
       message: "Logged In Successfully",
       code: "success",
       status: "success",

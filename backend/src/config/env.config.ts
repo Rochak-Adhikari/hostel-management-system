@@ -17,5 +17,7 @@ export const ENV_CONFIG = {
 JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
 JWT_SECRET: process.env.JWT_SECRET || "",
 
+COOKIE_EXPIRES_IN: process.env.COOKIE_EXPIRES_IN || "7d",
+
 
 };
