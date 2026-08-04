@@ -9,6 +9,13 @@ const ROLE_BY_PREFIX = {
   "/student": "student",
 } as const;
 
+// role -> tesko aafno dashboard
+const DASHBOARD_BY_ROLE: Record<string, string> = {
+  admin: "/admin/dashboard",
+  guardian: "/guardian/dashboard",
+  student: "/student/dashboard",
+};
+
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET is not set — route protection cannot verify tokens");
 }
@@ -38,17 +45,20 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  let role: unknown;
+  let role: string | undefined;
   try {
     // jwtVerify checks signature AND exp
     const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
-    role = payload.role;
+    role = typeof payload.role === "string" ? payload.role : undefined;
   } catch {
     return redirectAndClear(request, "/login");
   }
 
   if (role !== requiredRole) {
-    return NextResponse.redirect(new URL("/", request.url));
+    // session valid nai cha - cookie clear gardaina, aafno dashboard ma pathaune.
+    // role unknown vaye matra landing page (data corrupt/purano token)
+    const home = role ? DASHBOARD_BY_ROLE[role] : undefined;
+    return NextResponse.redirect(new URL(home ?? "/", request.url));
   }
 
   return NextResponse.next();

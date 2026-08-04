@@ -3,12 +3,24 @@ import User from "../models/user";
 import { ErrorCodes, Role } from "../types/enum";
 import { AppError } from "../middleware/errorhandlermiddleware";
 
-// Sabai user fetch garna ko lagi
+// Sabai user fetch garna ko lagi. ?role=student/guardian/admin le filter garna sakincha
 export const getALL = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    //! db query -> user collection
+    const { role } = req.query;
 
-    const users = await User.find({});
+    const filter: Record<string, unknown> = {};
+    if (typeof role === "string") {
+      if (!Object.values(Role).includes(role as Role)) {
+        throw new AppError("Invalid role filter", 400, ErrorCodes.VALIDATION_ERROR);
+      }
+      filter.role = role;
+    }
+
+    //! db query -> user collection
+    const users = await User.find(filter).populate(
+      "linked_student",
+      "full_name email phone"
+    );
 
     //! success response below
     return res.status(200).json({

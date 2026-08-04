@@ -7,6 +7,7 @@ import { useState } from "react";
 import {
   LayoutDashboard,
   Users,
+  UserRoundCog,
   BedDouble,
   CreditCard,
   MessageSquareWarning,
@@ -23,6 +24,7 @@ import {
 const navLinks = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Students", href: "/admin/students", icon: Users },
+  { name: "Guardians", href: "/admin/guardians", icon: UserRoundCog },
   { name: "Rooms", href: "/admin/rooms", icon: BedDouble },
   { name: "Room Requests", href: "/admin/room-requests", icon: ArrowRightLeft },
   { name: "Payments", href: "/admin/payments", icon: CreditCard },

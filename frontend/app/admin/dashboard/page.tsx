@@ -15,8 +15,8 @@ import { getAllComplaints } from "@/api/complaintapi";
 export default function DashboardPage() {
   // ── DATA FETCHING 
   const { data: studentsData } = useQuery({
-    queryKey: ["students"],
-    queryFn: getAllStudents,
+    queryKey: ["students", "student"],
+    queryFn: () => getAllStudents("student"),
   });
   const students = studentsData?.data ?? [];
 

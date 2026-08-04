@@ -67,8 +67,8 @@ export default function StudentsPage() {
   const [selectedBed, setSelectedBed] = useState<string>("");
 
   const { data, isPending, isError } = useQuery({
-    queryKey: ["students"],
-    queryFn: getAllStudents,
+    queryKey: ["students", "student"],
+    queryFn: () => getAllStudents("student"),
   });
   const students: Student[] = data?.data ?? [];
 

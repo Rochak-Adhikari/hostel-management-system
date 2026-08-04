@@ -2,9 +2,9 @@ import axios from "axios";
 
 const BASE_URL = "http://localhost:8080/api/v1/users";
 
-// sabai student/user haru fetch garna ko lagi
-export const getAllStudents = async () => {
-  const response = await axios.get(BASE_URL);
+// sabai student/user haru fetch garna ko lagi. role diyo vane tyo role ko matra aauxa
+export const getAllStudents = async (role?: string) => {
+  const response = await axios.get(BASE_URL, { params: role ? { role } : {} });
   return response.data;
 };
 
