@@ -29,13 +29,15 @@ export const authenticate = () => {
             throw new AppError("Token expired", 401, ErrorCodes.INVALID_CREDENTIALS);
         }
         // is user exist
-        //check role
-
-        //next()
-        } catch (error) {
-            return next(error)
+        if (!decodedData.id) {
+            throw new AppError("User not found", 404, ErrorCodes.NOT_FOUND);
         }
-        
 
-}
-}
+        
+        req.user = decodedData;
+        return next();
+        } catch (error) {
+            return next(error);
+        }
+    };
+};

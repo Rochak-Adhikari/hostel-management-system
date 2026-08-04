@@ -2,12 +2,13 @@ import { Request, Response, NextFunction } from "express";
 import User from "../models/user";
 import { hashText, compareHash } from "../utils/bycrptutils";
 import { AppError } from "../middleware/errorhandlermiddleware";
-import { ErrorCodes } from "../types/enum";
-import { createOtp } from "../utils/otputils";
+import { ErrorCodes, Role } from "../types/enum";
+import { createOtp, createToken } from "../utils/otputils";
 import sendEmail from "../utils/nodemailer";
-import { otpVerificationHTML } from "../utils/email";
+import { otpVerificationHTML, setGuardianPasswordHTML, resetPasswordHTML } from "../utils/email";
 import { signAccessToken } from "../utils/jwtUtils";
 import { ENV_CONFIG } from "../config/env.config";
+
 
 
 // REGISTER
@@ -89,7 +90,40 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
 
     await user.save();
 
+    // Auto-create guardian account if guardian details provided
+    if (guardian && guardian.name && guardian.phone && guardian.email) {
+      try {
+        const rawToken = createToken();
+        const reset_token_hash = await hashText(rawToken);
+        const reset_token_expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        const guardianUser = new User({
+          full_name: guardian.name,
+          email: guardian.email,
+          phone: guardian.phone,
+          role: Role.GUARDIAN,
+          linked_student: user._id,
+          isVerified: false,
+          reset_token_hash,
+          reset_token_expiry,
+        });
+
+        await guardianUser.save();
+
+        const setPasswordLink = `${ENV_CONFIG.FRONTEND_URL}/set-password?token=${rawToken}&email=${encodeURIComponent(guardian.email)}`;
+
+        await sendEmail({
+          to: guardian.email,
+          subject: "Set Your HostelHub Guardian Account Password",
+          html: setGuardianPasswordHTML(guardianUser, setPasswordLink),
+        });
+      } catch (gError) {
+        console.error("Error creating guardian account during student signup:", gError);
+      }
+    }
+
     return res.status(201).json({
+
       message: "User registered successfully",
       code: "success",
       status: "success",
@@ -178,12 +212,15 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
      
      console.log("COOKIE_EXPIRES_IN value:", ENV_CONFIG.COOKIE_EXPIRES_IN, typeof ENV_CONFIG.COOKIE_EXPIRES_IN);
 
-    return res.cookie("accessToken", accessToken,{
-      httpOnly:ENV_CONFIG.NODE_ENV === "development" ? false : true,
-      sameSite:ENV_CONFIG.NODE_ENV === "development" ? "lax" : "none",
-      secure:ENV_CONFIG.NODE_ENV === "development" ? false : true,
-      maxAge:Number(ENV_CONFIG.COOKIE_EXPIRES_IN || '7') * 24 * 60 * 60 * 1000, // convert days to milliseconds
+    const isProd = ENV_CONFIG.NODE_ENV === "production";
+
+    return res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      sameSite: isProd ? "none" : "lax",
+      secure: isProd,
+      maxAge: Number(ENV_CONFIG.COOKIE_EXPIRES_IN || '7') * 24 * 60 * 60 * 1000,
     }).status(200).json({
+
       message: "Logged In Successfully",
       code: "success",
       status: "success",
@@ -344,3 +381,144 @@ export const resendOtp = async (req: Request, res: Response, next: NextFunction)
     return next(error);
   }
 };
+
+
+//! FORGOT PASSWORD
+
+export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      throw new AppError(
+        "Email is required",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      throw new AppError(
+        "User not found with this email",
+        404,
+        ErrorCodes.NOT_FOUND
+      );
+    }
+
+    const rawToken = createToken();
+    const reset_token_hash = await hashText(rawToken);
+    const reset_token_expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+
+    user.reset_token_hash = reset_token_hash;
+    user.reset_token_expiry = reset_token_expiry;
+    await user.save();
+
+    const setPasswordLink = `${ENV_CONFIG.FRONTEND_URL}/set-password?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
+
+    await sendEmail({
+      to: user.email,
+      subject: "Reset Your HostelHub Password",
+      html: resetPasswordHTML(user, setPasswordLink),
+    });
+
+    return res.status(200).json({
+      message: "Password reset link sent to your email",
+      code: "success",
+      status: "success",
+      data: null,
+    });
+
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+
+//! SET PASSWORD
+
+export const setPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, token, new_password, confirm_password } = req.body;
+
+    if (!email || !token || !new_password || !confirm_password) {
+      throw new AppError(
+        "All fields are required",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
+
+    if (new_password.length < 6) {
+      throw new AppError(
+        "Password must be at least 6 characters long",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
+
+    if (new_password !== confirm_password) {
+      throw new AppError(
+        "Passwords do not match",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
+
+    const user = await User.findOne({ email }).select("+reset_token_hash +reset_token_expiry");
+
+    if (!user) {
+      throw new AppError(
+        "User not found",
+        404,
+        ErrorCodes.NOT_FOUND
+      );
+    }
+
+    if (!user.reset_token_hash || !user.reset_token_expiry) {
+      throw new AppError(
+        "No active password reset request found. Please request a new link.",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
+
+    if (new Date() > user.reset_token_expiry) {
+      throw new AppError(
+        "Password reset token has expired. Please request a new link.",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
+
+    const isMatch = await compareHash(token, user.reset_token_hash);
+
+    if (!isMatch) {
+      throw new AppError(
+        "Invalid or expired password reset token",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
+
+    const hashedPassword = await hashText(new_password);
+    user.password = hashedPassword;
+    user.reset_token_hash = undefined;
+    user.reset_token_expiry = undefined;
+    user.isVerified = true;
+    user.isActive = true;
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Password has been updated successfully",
+      code: "success",
+      status: "success",
+      data: null,
+    });
+
+  } catch (error: any) {
+    return next(error);
+  }
+};

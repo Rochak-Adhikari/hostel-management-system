@@ -1,4 +1,4 @@
-import { LoginSchema, RegisterSchema, ForgotPasswordSchema, OtpSchema } from '@/schema/authschema'
+import { LoginSchema, RegisterSchema, ForgotPasswordSchema, OtpSchema, SetPasswordSchema } from '@/schema/authschema'
 import * as yup from "yup"
 
 export type ILogin = {
@@ -30,7 +30,16 @@ export type IOtp = {
   otp: string
 }
 
+export type ISetPassword = {
+  email: string
+  token: string
+  new_password: string
+  confirm_password: string
+}
+
 export type ILoginSchema = yup.InferType<typeof LoginSchema>
 export type IRegisterSchema = yup.InferType<typeof RegisterSchema>
 export type IForgotPasswordSchema = yup.InferType<typeof ForgotPasswordSchema>
 export type IOtpSchema = yup.InferType<typeof OtpSchema>
+export type ISetPasswordSchema = yup.InferType<typeof SetPasswordSchema>
+

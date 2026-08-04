@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: [true, "Password is required"],
+      required: false,
       minlength: [6, "Password must be at least 6 characters long"],
       select: false,
 
@@ -43,6 +43,17 @@ const userSchema = new mongoose.Schema(
   },
 
   otp_expiry:{
+    type: Date,
+    select: false,
+
+  },
+
+   reset_token_hash:{
+     type: String,
+     select: false,  
+  },
+
+  reset_token_expiry:{
     type: Date,
     select: false,
 
@@ -74,15 +85,16 @@ const userSchema = new mongoose.Schema(
 
  gender: {
   type: String,
-  required: [true, "Gender is required"],
+  required: false,
   enum: ["male", "female", "other"],
 },
 
 address: {
   type: String,
-  required: [true, "Address is required"],
+  required: false,
   trim: true,
 },
+
     
 
     guardian: {

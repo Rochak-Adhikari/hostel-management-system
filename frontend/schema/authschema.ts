@@ -27,3 +27,12 @@ export const ForgotPasswordSchema = yup.object({
 export const OtpSchema = yup.object({
   otp: yup.string().length(6, 'OTP must be exactly 6 digits').required('OTP is required'),
 })
+
+export const SetPasswordSchema = yup.object({
+  new_password: yup.string().min(6, 'Password must be at least 6 characters').required('New password is required'),
+  confirm_password: yup
+    .string()
+    .oneOf([yup.ref('new_password')], 'Passwords must match')
+    .required('Confirm password is required'),
+})
+

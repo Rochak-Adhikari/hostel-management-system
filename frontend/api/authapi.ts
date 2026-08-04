@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ILogin, IRegister, IForgotPassword, IOtp } from '@/types/authtype';
+import { ILogin, IRegister, IForgotPassword, IOtp, ISetPassword } from '@/types/authtype';
 
 export const login = async (data: ILogin) => {
   const response = await axios.post('http://localhost:8080/api/v1/auth/login', data)
@@ -25,3 +25,9 @@ export const resendOtp = async (data: { email: string }) => {
   const response = await axios.post('http://localhost:8080/api/v1/auth/resend-otp', data)
   return response.data
 }
+
+export const setPassword = async (data: ISetPassword) => {
+  const response = await axios.post('http://localhost:8080/api/v1/auth/set-password', data)
+  return response.data
+}
+

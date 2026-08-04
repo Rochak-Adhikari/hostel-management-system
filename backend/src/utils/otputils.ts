@@ -9,3 +9,7 @@ export const createOtp = (length = 6) => {
 
     return otp;
 };
+
+export const createToken = (): string => {
+    return crypto.randomBytes(32).toString("hex");
+};

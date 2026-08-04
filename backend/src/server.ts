@@ -26,15 +26,23 @@ import roomChangeRequestRoutes from "./routes/roomChangeRequestRoutes";
 
 
 
+import { ENV_CONFIG } from "./config/env.config";
+
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = ENV_CONFIG.PORT;
 
 //* database sanga connect garna ko lagi
 connectDB();
 
 
 
-app.use(cors());
+app.use(
+  cors({
+    origin: ENV_CONFIG.FRONTEND_URL,
+    credentials: true,
+  })
+);
+
 //using middleware
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
