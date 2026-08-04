@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import User from "../models/user";
-import { ErrorCodes } from "../types/enum";
+import { ErrorCodes, Role } from "../types/enum";
 import { AppError } from "../middleware/errorhandlermiddleware";
 
 // Sabai user fetch garna ko lagi
@@ -57,9 +57,19 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
 
+    // aafai role/linked_student badalna paudaina - privilege escalation rokne
+    const updateData = { ...req.body };
+    if (req.user?.role !== Role.ADMIN) {
+      delete updateData.role;
+      delete updateData.linked_student;
+      delete updateData.isActive;
+      delete updateData.isVerified;
+      delete updateData.password;
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
   id,
-  req.body,
+  updateData,
   {
     new: true, // true return garxa vney updated data else it's useless send gardaina
     runValidators: true,

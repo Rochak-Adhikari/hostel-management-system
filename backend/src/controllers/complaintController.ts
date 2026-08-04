@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import Complaint from "../models/Complaint";
 import { AppError } from "../middleware/errorhandlermiddleware";
-import { ErrorCodes } from "../types/enum";
+import { ErrorCodes, Role } from "../types/enum";
+import { assertCanAccessStudent } from "../middleware/authMiddleware";
 
 // CREATE COMPLAINT
 // student le new complaint create garna ko lagi
@@ -9,8 +10,10 @@ export const createComplaint = async (req: Request, res: Response, next: NextFun
   try {
     const { student, title, description, category } = req.body;
 
-    
-    if (!student || !title || !description) {
+    // student aafai halda aafno id matra prayog huncha; admin le aru ko lagi halna sakxa
+    const owner = req.user?.role === Role.ADMIN ? student : req.user?.id;
+
+    if (!owner || !title || !description) {
       throw new AppError(
         "Student, Title, and Description are required",
         400,
@@ -19,7 +22,7 @@ export const createComplaint = async (req: Request, res: Response, next: NextFun
     }
 
     const complaint = new Complaint({
-      student,
+      student: owner,
       title,
       description,
       category,
@@ -68,6 +71,8 @@ export const getComplaintById = async (req: Request, res: Response, next: NextFu
       throw new AppError("Complaint Not Found", 404, ErrorCodes.NOT_FOUND);
     }
 
+    await assertCanAccessStudent(req, (complaint.student as any)?._id ?? complaint.student);
+
     return res.status(200).json({
       message: "Complaint Fetched Successfully",
       code: "success",
@@ -102,9 +107,22 @@ export const updateComplaint = async (req: Request, res: Response, next: NextFun
   try {
     const { id } = req.params;
 
+    const existing = await Complaint.findById(id);
+    if (!existing) {
+      throw new AppError("Complaint Not Found", 404, ErrorCodes.NOT_FOUND);
+    }
+    await assertCanAccessStudent(req, existing.student);
+
+    const updateData = { ...req.body };
+    // student/guardian le status ni student field badalna paudaina
+    if (req.user?.role !== Role.ADMIN) {
+      delete updateData.status;
+      delete updateData.student;
+    }
+
     const updatedComplaint = await Complaint.findByIdAndUpdate(
       id,
-      req.body,
+      updateData,
       {
         new: true,
         runValidators: true,
@@ -130,6 +148,12 @@ export const updateComplaint = async (req: Request, res: Response, next: NextFun
 export const deleteComplaint = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+
+    const existing = await Complaint.findById(id);
+    if (!existing) {
+      throw new AppError("Complaint Not Found", 404, ErrorCodes.NOT_FOUND);
+    }
+    await assertCanAccessStudent(req, existing.student);
 
     const deletedComplaint = await Complaint.findByIdAndDelete(id);
 

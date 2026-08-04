@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "../middleware/errorhandlermiddleware";
-import { ErrorCodes, RoomChangeStatus } from "../types/enum";
+import { ErrorCodes, RoomChangeStatus, Role } from "../types/enum";
+import { assertCanAccessStudent } from "../middleware/authMiddleware";
 import RoomChangeRequest from "../models/RoomChangeRequest";
 
 // CREATE RoomChangeRequests
@@ -9,8 +10,11 @@ export const createRoomChangeRequest = async (req: Request, res: Response, next:
   try {
     const { student, currentRoom, reason, preferredRoomType } = req.body;
 
+    // student aafai halda aafno id matra; admin le aru ko lagi halna sakxa
+    const owner = req.user?.role === Role.ADMIN ? student : req.user?.id;
+
     // validation - adminNote yaha chaidaina, tyo admin le pachi bharne ho
-    if (!student || !currentRoom || !reason || !preferredRoomType) {
+    if (!owner || !currentRoom || !reason || !preferredRoomType) {
       throw new AppError(
         "All fields are required",
         400,
@@ -20,7 +24,7 @@ export const createRoomChangeRequest = async (req: Request, res: Response, next:
 
     // student sanga pahile dekhi kunai Pending request cha ki check garne
     const existingPending = await RoomChangeRequest.findOne({
-      student,
+      student: owner,
       status: RoomChangeStatus.PENDING,
     });
 
@@ -33,7 +37,7 @@ export const createRoomChangeRequest = async (req: Request, res: Response, next:
     }
 
     const roomChange = new RoomChangeRequest({
-      student,
+      student: owner,
       currentRoom,
       reason,
       preferredRoomType,
@@ -101,6 +105,8 @@ export const getRoomChangeRequestByID = async (req: Request, res: Response, next
       );
     }
 
+    await assertCanAccessStudent(req, roomChangeRequest.student);
+
     return res.status(200).json({
       message: "Room Change Request Fetched Successfully",
       code: "success",
@@ -157,10 +163,19 @@ export const deleteRoomChangeRequest = async (req: Request, res: Response, next:
   try {
     const { id } = req.params;
 
+    const existing = await RoomChangeRequest.findById(id);
+    if (!existing) {
+      throw new AppError(
+        "Room Change Request Not Found",
+        404,
+        ErrorCodes.ROOM_CHANGE_REQUEST_NOT_FOUND
+      );
+    }
+    await assertCanAccessStudent(req, existing.student);
+
     const deletedRoomChangeRequest = await RoomChangeRequest.findByIdAndDelete(id);
 
-    if (!deletedRoomChangeRequest) {
-      throw new AppError(
+    if (!deletedRoomChangeRequest) {      throw new AppError(
         "Room Change Request Not Found",
         404,
         ErrorCodes.ROOM_CHANGE_REQUEST_NOT_FOUND

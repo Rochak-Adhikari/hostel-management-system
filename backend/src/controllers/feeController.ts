@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "../middleware/errorhandlermiddleware";
 import { ErrorCodes } from "../types/enum";
+import { assertCanAccessStudent } from "../middleware/authMiddleware";
 import Fee from "../models/Fee";
 
 // CREATE fee
@@ -72,6 +73,8 @@ export const getFeeByID = async (req: Request, res: Response, next: NextFunction
         ErrorCodes.FEE_NOT_FOUND
       );
     }
+
+    await assertCanAccessStudent(req, fee.student);
 
     return res.status(200).json({
       message: "Fee Fetched Successfully",
