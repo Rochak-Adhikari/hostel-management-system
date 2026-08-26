@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   MapPin,
   Phone,
@@ -12,37 +13,31 @@ import {
   Bed,
   Clock,
   Download,
-  Lock,
+  X,
+  Pencil,
 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { getStudentById, updateStudent } from "@/api/studentapi";
+import { getAllocationByStudent } from "@/api/allocationapi";
+import { getRoomById } from "@/api/roomapi";
+import { getFeesByStudent } from "@/api/feeapi";
+import { getComplaintsByStudent } from "@/api/complaintapi";
 
-// ── Data ─────────────────────────────────────────────────────────────────────
-const student = {
-  id: "STU-2026-014",
-  name: "Rochak Adhikari",
-  gender: "Male",
-  address: "123 Murgiya, Butwal, Lumbini, Nepal",
-  phone: "+977 9812543662",
-  email: "rochakadhikari24@gmail.com",
-  guardianName: "Bindu Adhikari",
-  guardianPhone: "+977 9812543662",
-  admissionDate: "12 Jan 2025",
-};
+// Profile update validation schema
+const editProfileSchema = yup.object({
+  full_name: yup.string().required("Full name is required"),
+  phone: yup.string().required("Phone number is required"),
+  address: yup.string().optional(),
+  gender: yup.string().optional(),
+  guardianName: yup.string().optional(),
+  guardianPhone: yup.string().optional(),
+  guardianEmail: yup.string().email("Invalid email format").optional(),
+});
 
-const roomAllocation = {
-  roomNumber: "A-001",
-  floor: "2nd Floor",
-  roomType: "Quadruple Sharing",
-  monthlyFee: "Rs. 12,000",
-  allocationDate: "12 Jan 2026",
-  status: "Active",
-};
-
-const stats = [
-  { label: "Fee Status",    value: "PAID",  sub: "June 2026",      icon: CreditCard },
-  { label: "Complaints",   value: "3",     sub: "2 resolved",     icon: MessageSquareWarning },
-  { label: "Room",         value: "A-001", sub: "2nd Floor",      icon: Bed },
-  { label: "Stay Duration",value: "6 mo.", sub: "Since Jan 2026", icon: Clock },
-];
+type EditProfileFormValues = yup.InferType<typeof editProfileSchema>;
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 function Field({
@@ -84,7 +79,140 @@ function Card({
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function MyProfilePage() {
-  const initials = student.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+  const queryClient = useQueryClient();
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  // localStorage bata login garda save vaisako user info nikalne
+  const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+  const currentUser = storedUser ? JSON.parse(storedUser) : null;
+
+  // Real student profile data backend bata fetch garne
+  const { data: studentRes, isPending, isError } = useQuery({
+    queryKey: ["studentProfile", currentUser?.id],
+    queryFn: () => getStudentById(currentUser.id),
+    enabled: !!currentUser?.id,
+  });
+  const student = studentRes?.data;
+
+  // Student ko room allocation details fetch garne
+  const { data: allocationRes } = useQuery({
+    queryKey: ["myAllocation", currentUser?.id],
+    queryFn: () => getAllocationByStudent(currentUser.id),
+    enabled: !!currentUser?.id,
+  });
+  const allocation = allocationRes?.data;
+
+  // Room details fetch garne
+  const { data: roomRes } = useQuery({
+    queryKey: ["myRoom", allocation?.room],
+    queryFn: () => getRoomById(allocation.room),
+    enabled: !!allocation?.room,
+  });
+  const room = roomRes?.data;
+
+  // Fee details fetch garne
+  const { data: feesRes } = useQuery({
+    queryKey: ["myFees", currentUser?.id],
+    queryFn: () => getFeesByStudent(currentUser.id),
+    enabled: !!currentUser?.id,
+  });
+  const fees: any[] = feesRes?.data ?? [];
+  const latestFee = fees[0];
+
+  // Complaints fetch garne
+  const { data: complaintsRes } = useQuery({
+    queryKey: ["myComplaints", currentUser?.id],
+    queryFn: () => getComplaintsByStudent(currentUser.id),
+    enabled: !!currentUser?.id,
+  });
+  const complaints: any[] = complaintsRes?.data ?? [];
+  const resolvedCount = complaints.filter((c: any) => c.status === "Resolved").length;
+
+  // React hook form for profile edit
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<EditProfileFormValues>({
+    resolver: yupResolver(editProfileSchema) as any,
+  });
+
+  // Profile update mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: (data: EditProfileFormValues) => updateStudent(currentUser.id, data),
+    onSuccess: (updatedRes) => {
+      queryClient.invalidateQueries({ queryKey: ["studentProfile", currentUser?.id] });
+      // localStorage update garne local user full_name, etc.
+      if (storedUser && updatedRes?.data) {
+        const updatedUser = { ...currentUser, ...updatedRes.data };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
+      setShowEditModal(false);
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || "Failed to update profile");
+    },
+  });
+
+  function openEditModal() {
+    if (student) {
+      setValue("full_name", student.full_name || "");
+      setValue("phone", student.phone || "");
+      setValue("address", student.address || "");
+      setValue("gender", student.gender || "Male");
+      setValue("guardianName", student.guardianName || "");
+      setValue("guardianPhone", student.guardianPhone || "");
+      setValue("guardianEmail", student.guardianEmail || "");
+    }
+    setShowEditModal(true);
+  }
+
+  function onEditSubmit(formData: EditProfileFormValues) {
+    updateProfileMutation.mutate(formData);
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+        <p className="text-gray-500">Please log in to view your profile.</p>
+      </div>
+    );
+  }
+
+  if (isPending) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+        <p className="text-gray-500">Loading student profile...</p>
+      </div>
+    );
+  }
+
+  if (isError || !student) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-red-500">
+        <p>Failed to load student profile. Please try again later.</p>
+      </div>
+    );
+  }
+
+  const name = student.full_name || "Student";
+  const initials = name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
+  const admissionDate = student.createdAt ? new Date(student.createdAt).toLocaleDateString("en-GB") : "N/A";
+  const studentId = student._id;
+
+  const roomNumberDisplay = room ? room.RoomNumber : "Unassigned";
+  const roomTypeDisplay = room ? room.RoomType : "N/A";
+  const floorDisplay = room ? room.Floor : "N/A";
+  const monthlyFeeDisplay = room ? `Rs. ${room.MonthlyFee?.toLocaleString()}` : "N/A";
+  const allocationDateDisplay = allocation?.allocatedDate ? new Date(allocation.allocatedDate).toLocaleDateString("en-GB") : "N/A";
+
+  const stats = [
+    { label: "Fee Status", value: latestFee ? latestFee.status.toUpperCase() : "NO FEES", sub: latestFee ? latestFee.month : "No billing", icon: CreditCard },
+    { label: "Complaints", value: String(complaints.length), sub: `${resolvedCount} resolved`, icon: MessageSquareWarning },
+    { label: "Room", value: roomNumberDisplay, sub: floorDisplay, icon: Bed },
+    { label: "Admitted On", value: admissionDate, sub: "Registered Date", icon: Clock },
+  ];
 
   return (
     <div className="space-y-5">
@@ -106,23 +234,23 @@ export default function MyProfilePage() {
               {/* Name + ID */}
               <div>
                 <h1 className="text-2xl md:text-3xl font-black text-gray-900 leading-tight tracking-tight">
-                  {student.name}
+                  {name}
                 </h1>
-                <p className="text-xs text-gray-400 font-mono mt-0.5 tracking-wide">{student.id}</p>
+                <p className="text-xs text-gray-400 font-mono mt-0.5 tracking-wide">{studentId}</p>
 
                 {/* Badges */}
                 <div className="flex flex-wrap gap-1.5 mt-2.5">
                   <span className="inline-flex items-center gap-1.5 bg-gray-900 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full">
                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                    Active Resident
+                    {room ? "Active Resident" : "Registered Student"}
                   </span>
                   <span className="inline-flex items-center gap-1 border border-gray-200 text-gray-600 text-[10px] font-semibold px-2.5 py-1 rounded-full">
                     <Bed size={10} />
-                    Room {roomAllocation.roomNumber}
+                    Room {roomNumberDisplay}
                   </span>
                   <span className="inline-flex items-center gap-1 border border-gray-200 text-gray-600 text-[10px] font-semibold px-2.5 py-1 rounded-full">
                     <CalendarDays size={10} />
-                    Admitted {student.admissionDate}
+                    Admitted {admissionDate}
                   </span>
                 </div>
               </div>
@@ -130,12 +258,12 @@ export default function MyProfilePage() {
 
             {/* Actions */}
             <div className="flex gap-2 shrink-0">
-              <button className="bg-black text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors">
+              <button
+                onClick={openEditModal}
+                className="flex items-center gap-1.5 bg-black text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors"
+              >
+                <Pencil size={13} />
                 Edit Profile
-              </button>
-              <button className="flex items-center gap-1.5 border border-gray-300 text-gray-700 text-xs font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors">
-                <Download size={12} />
-                Download ID
               </button>
             </div>
           </div>
@@ -165,18 +293,18 @@ export default function MyProfilePage() {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">Current Room Allocation</p>
             <div className="flex items-baseline gap-3">
-              <span className="text-4xl md:text-5xl font-black">{roomAllocation.roomNumber}</span>
+              <span className="text-4xl md:text-5xl font-black">{roomNumberDisplay}</span>
               <div>
-                <p className="text-sm font-semibold text-white/90">{roomAllocation.roomType}</p>
-                <p className="text-xs text-white/50">{roomAllocation.floor}</p>
+                <p className="text-sm font-semibold text-white/90">{roomTypeDisplay}</p>
+                <p className="text-xs text-white/50">{floorDisplay}</p>
               </div>
             </div>
           </div>
           <div className="flex flex-row md:flex-col gap-4 md:gap-2 md:text-right">
             {[
-              ["Monthly Fee", roomAllocation.monthlyFee],
-              ["Allocated On", roomAllocation.allocationDate],
-              ["Status", roomAllocation.status],
+              ["Monthly Fee", monthlyFeeDisplay],
+              ["Allocated On", allocationDateDisplay],
+              ["Status", allocation ? "Active" : "Unassigned"],
             ].map(([key, val]) => (
               <div key={key}>
                 <p className="text-[10px] uppercase tracking-wider text-white/40">{key}</p>
@@ -191,40 +319,20 @@ export default function MyProfilePage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         {/* Personal Information */}
         <Card title="Personal Information" icon={User2}>
-          <Field icon={User2}        label="Full Name"         value={student.name} />
-          <Field icon={User2}        label="Gender"            value={student.gender} />
-          <Field icon={CalendarDays} label="Admission Date"    value={student.admissionDate} />
-          <Field icon={Phone}        label="Phone Number"      value={student.phone} />
-          <Field icon={Mail}         label="Email Address"     value={student.email} />
-          <Field icon={MapPin}       label="Permanent Address" value={student.address} />
+          <Field icon={User2}        label="Full Name"         value={student.full_name || "—"} />
+          <Field icon={User2}        label="Gender"            value={student.gender || "Not specified"} />
+          <Field icon={CalendarDays} label="Registration Date" value={admissionDate} />
+          <Field icon={Phone}        label="Phone Number"      value={student.phone || "—"} />
+          <Field icon={Mail}         label="Email Address"     value={student.email || "—"} />
+          <Field icon={MapPin}       label="Permanent Address" value={student.address || "Not provided"} />
         </Card>
 
-        {/* Guardian + Account Security */}
+        {/* Guardian Details */}
         <Card title="Guardian Details" icon={ShieldCheck}>
-          <Field icon={User2} label="Guardian Name"    value={student.guardianName} />
-          <Field icon={Phone} label="Guardian Phone"   value={student.guardianPhone} />
-          <Field icon={Phone} label="Emergency Contact" value={student.guardianPhone} accent />
-
-          <div className="mt-5 pt-4 border-t border-gray-100">
-            <div className="flex items-center gap-2 mb-3">
-              <Lock size={13} className="text-gray-500" />
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Account Security</p>
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-xs text-gray-500">Username</span>
-                <span className="text-xs font-semibold text-gray-800">rochak.adhikari001</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-xs text-gray-500">Last Login</span>
-                <span className="text-xs font-semibold text-gray-800">Today, 9:42 AM</span>
-              </div>
-            </div>
-            <button className="mt-3 w-full border border-gray-300 text-gray-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5">
-              <Lock size={12} />
-              Change Password
-            </button>
-          </div>
+          <Field icon={User2} label="Guardian Name font-semibold"  value={student.guardianName || "Not assigned"} />
+          <Field icon={Phone} label="Guardian Phone" value={student.guardianPhone || "—"} />
+          <Field icon={Mail}  label="Guardian Email" value={student.guardianEmail || "—"} />
+          <Field icon={Phone} label="Emergency Contact" value={student.guardianPhone || student.phone || "—"} accent />
         </Card>
       </div>
 
@@ -233,28 +341,24 @@ export default function MyProfilePage() {
         <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <User2 size={15} className="text-gray-600" />
-            <h2 className="text-sm font-semibold text-gray-700">Student ID Summary</h2>
+            <h2 className="text-sm font-semibold text-gray-700">Student Identity Summary</h2>
           </div>
-          <button className="text-xs text-gray-500 underline hover:text-gray-800 transition-colors flex items-center gap-1">
-            <Download size={11} />
-            Export
-          </button>
         </div>
         <div className="p-5">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {[
-              ["Student ID",     student.id],
-              ["Name",           student.name],
-              ["Gender",         student.gender],
-              ["Phone",          student.phone],
-              ["Email",          student.email],
-              ["Address",        student.address],
-              ["Guardian",       student.guardianName],
-              ["Guardian Phone", student.guardianPhone],
-              ["Admission Date", student.admissionDate],
-              ["Room Number",    roomAllocation.roomNumber],
-              ["Room Type",      roomAllocation.roomType],
-              ["Monthly Fee",    roomAllocation.monthlyFee],
+              ["Student ID",     studentId],
+              ["Name",           student.full_name || "—"],
+              ["Gender",         student.gender || "—"],
+              ["Phone",          student.phone || "—"],
+              ["Email",          student.email || "—"],
+              ["Address",        student.address || "—"],
+              ["Guardian",       student.guardianName || "—"],
+              ["Guardian Phone", student.guardianPhone || "—"],
+              ["Admission Date", admissionDate],
+              ["Room Number",    roomNumberDisplay],
+              ["Room Type",      roomTypeDisplay],
+              ["Monthly Fee",    monthlyFeeDisplay],
             ].map(([label, value]) => (
               <div key={label}>
                 <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">{label}</p>
@@ -265,6 +369,121 @@ export default function MyProfilePage() {
         </div>
       </div>
 
+      {/* Edit Profile Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <form
+            onSubmit={handleSubmit(onEditSubmit)}
+            className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden"
+          >
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50">
+              <h2 className="text-base font-bold text-gray-800">Edit My Profile</h2>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  {...register("full_name")}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                />
+                {errors.full_name && (
+                  <p className="text-red-500 text-xs mt-1">{errors.full_name.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  {...register("phone")}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                />
+                {errors.phone && (
+                  <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Gender</label>
+                <select
+                  {...register("gender")}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-white"
+                >
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Permanent Address</label>
+                <input
+                  type="text"
+                  {...register("address")}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                />
+              </div>
+
+              <div className="border-t border-gray-100 pt-3 space-y-3">
+                <p className="text-xs font-bold text-gray-700">Guardian Information</p>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Guardian Name</label>
+                  <input
+                    type="text"
+                    {...register("guardianName")}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Guardian Phone</label>
+                  <input
+                    type="text"
+                    {...register("guardianPhone")}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Guardian Email</label>
+                  <input
+                    type="email"
+                    {...register("guardianEmail")}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                  />
+                  {errors.guardianEmail && (
+                    <p className="text-red-500 text-xs mt-1">{errors.guardianEmail.message}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 pt-3 border-t border-gray-100 flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-xl text-sm hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updateProfileMutation.isPending}
+                className="px-4 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-900 transition disabled:opacity-50"
+              >
+                {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

@@ -17,28 +17,8 @@ import { getAllocationByStudent } from "@/api/allocationapi";
 import { getRoomById } from "@/api/roomapi";
 import { getComplaintsByStudent } from "@/api/complaintapi";
 import { getAllNotices } from "@/api/noticeapi";
-
-// ── Static data (backend nabaneko modules ko lagi - Fee, Complaint, Visitor, Notice) ──
-const feeData = {
-  status: "PAID" as const,
-  month: "June 2026",
-  nextDueDate: "15 Jul 2026",
-  nextAmount: "Rs. 12,000",
-};
-
-// MOCK arrays for visitors and notices (others will be real)
-
-const recentVisitors = [
-  { name: "Ramesh Sharma",  purpose: "Family Visit",       date: "30 Jun 2026", checkOut: "6:45 PM" },
-  { name: "Sita Thapa",     purpose: "Delivering Clothes", date: "28 Jun 2026", checkOut: "4:30 PM" },
-];
-
-const notices = [
-  { id: 1, title: "Visitor Timing Update",     content: "Visitor hours revised — Morning 10:00 AM–12:00 PM, Evening 4:00 PM–7:00 PM.", date: "28 Jun 2026" },
-  { id: 2, title: "Water Supply Interruption", content: "Water supply interrupted on 2 July 2026 from 9:00 AM–1:00 PM for maintenance.", date: "27 Jun 2026" },
-  { id: 3, title: "Fee Payment Deadline",      content: "All students must clear hostel fee dues before 15 July 2026.", date: "25 Jun 2026" },
-  { id: 4, title: "Hostel Inspection Notice",  content: "General room inspection on 5 July 2026. Please keep rooms clean and tidy.", date: "22 Jun 2026" },
-];
+import { getFeesByStudent } from "@/api/feeapi";
+import { getVisitorsByStudent } from "@/api/visitorapi";
 
 const STATUS_PILL: Record<string, string> = {
   "Pending":     "border border-gray-300 text-gray-500",
@@ -46,13 +26,12 @@ const STATUS_PILL: Record<string, string> = {
   "Resolved":    "bg-gray-900 text-white",
 };
 
-// ── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   // localStorage bata login garda save vaisako user info nikalne
   const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
   const currentUser = storedUser ? JSON.parse(storedUser) : null;
 
-  // yo student ko allocation (room) fetch garne
+  // Yo student ko allocation (room) fetch garne
   const { data: allocationData } = useQuery({
     queryKey: ["myAllocation", currentUser?.id],
     queryFn: () => getAllocationByStudent(currentUser.id),
@@ -60,7 +39,7 @@ export default function DashboardPage() {
   });
   const allocation = allocationData?.data;
 
-  // allocation vaye pachi, tyo room ko full detail fetch garne
+  // Allocation vaye pachi, tyo room ko full detail fetch garne
   const { data: roomData } = useQuery({
     queryKey: ["myRoom", allocation?.room],
     queryFn: () => getRoomById(allocation.room),
@@ -80,6 +59,25 @@ export default function DashboardPage() {
   const complaintsInProgress = myComplaints.filter((c: any) => c.status === "In Progress").length;
   const complaintsResolved = myComplaints.filter((c: any) => c.status === "Resolved").length;
   const recentComplaints = [...myComplaints].reverse().slice(0, 3);
+
+  // Real fees fetching
+  const { data: feesDataRes } = useQuery({
+    queryKey: ["myFees", currentUser?.id],
+    queryFn: () => getFeesByStudent(currentUser.id),
+    enabled: !!currentUser?.id,
+  });
+  const myFees: any[] = feesDataRes?.data ?? [];
+  const latestFee = myFees[0];
+  const unpaidFeesCount = myFees.filter((f: any) => f.status === "Unpaid" || f.status === "Overdue").length;
+
+  // Real visitors fetching
+  const { data: visitorsDataRes } = useQuery({
+    queryKey: ["myVisitors", currentUser?.id],
+    queryFn: () => getVisitorsByStudent(currentUser.id),
+    enabled: !!currentUser?.id,
+  });
+  const myVisitors: any[] = visitorsDataRes?.data ?? [];
+  const recentVisitorsList = [...myVisitors].slice(0, 2);
 
   // Real notices fetching
   const { data: noticesDataRes } = useQuery({
@@ -129,7 +127,7 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* Fee Status - MOCK, Fee module not built yet */}
+        {/* Fee Status - REAL DATA */}
         <Link href="/student/fees" className="group">
           <div className="bg-black border border-gray-900 rounded-2xl p-4 hover:bg-gray-900 transition-colors h-full">
             <div className="flex items-center justify-between mb-3">
@@ -139,12 +137,12 @@ export default function DashboardPage() {
               <ChevronRight size={13} className="text-white/30" />
             </div>
             <p className="text-[10px] uppercase tracking-widest text-white/40 font-medium mb-1">Fee Status</p>
-            <p className="text-xl font-black text-white">{feeData.status}</p>
-            <p className="text-xs text-white/50 mt-0.5">{feeData.month}</p>
+            <p className="text-xl font-black text-white">{latestFee ? latestFee.status.toUpperCase() : "NO FEES"}</p>
+            <p className="text-xs text-white/50 mt-0.5">{latestFee ? latestFee.month : "No billing yet"}</p>
           </div>
         </Link>
 
-        {/* Complaints - MOCK, Complaint module not built yet */}
+        {/* Complaints - REAL DATA */}
         <Link href="/student/complaints" className="group">
           <div className="bg-white border border-gray-200 rounded-2xl p-4 hover:border-gray-400 transition-colors h-full">
             <div className="flex items-center justify-between mb-3">
@@ -159,7 +157,7 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* Visitors - MOCK, Visitor module not built yet */}
+        {/* Visitors - REAL DATA */}
         <Link href="/student/visitor-log" className="group">
           <div className="bg-white border border-gray-200 rounded-2xl p-4 hover:border-gray-400 transition-colors h-full">
             <div className="flex items-center justify-between mb-3">
@@ -169,8 +167,8 @@ export default function DashboardPage() {
               <ChevronRight size={13} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
             </div>
             <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">Visitors</p>
-            <p className="text-xl font-black text-gray-900">2</p>
-            <p className="text-xs text-gray-400 mt-0.5">This month</p>
+            <p className="text-xl font-black text-gray-900">{myVisitors.length}</p>
+            <p className="text-xs text-gray-400 mt-0.5">Total visitor logs</p>
           </div>
         </Link>
       </div>
@@ -196,7 +194,7 @@ export default function DashboardPage() {
                 ["Bed",           `Bed ${allocation?.bed?.toUpperCase()}`],
                 ["Room Type",     room.RoomType],
                 ["Floor",         room.Floor],
-                ["Monthly Fee",   `Rs. ${room.MonthlyFee.toLocaleString()}`],
+                ["Monthly Fee",   `Rs. ${room.MonthlyFee?.toLocaleString()}`],
                 ["Allocated On",  allocation?.allocatedDate ? new Date(allocation.allocatedDate).toLocaleDateString() : "-"],
                 ["Status",        room.Occupied >= room.Capacity ? "Occupied" : "Available"],
               ].map(([label, value]) => (
@@ -213,12 +211,12 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Fee Details - MOCK, Fee module not built yet */}
+        {/* Fee Details - REAL DATA */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CreditCard size={14} className="text-gray-500" />
-              <h2 className="text-sm font-semibold text-gray-700">Fee & Payments</h2>
+              <h2 className="text-sm font-semibold text-gray-700">Fee &amp; Payments</h2>
             </div>
             <Link href="/student/fees" className="text-[11px] text-gray-500 hover:text-gray-800 underline underline-offset-2">
               View all ↗
@@ -228,33 +226,38 @@ export default function DashboardPage() {
             <div className="bg-gray-900 rounded-xl p-4 flex items-center justify-between">
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-white/40 font-medium">Current Status</p>
-                <p className="text-xl font-black text-white mt-0.5">{feeData.status}</p>
-                <p className="text-xs text-white/50 mt-0.5">{feeData.month}</p>
+                <p className="text-xl font-black text-white mt-0.5">{latestFee ? latestFee.status.toUpperCase() : "N/A"}</p>
+                <p className="text-xs text-white/50 mt-0.5">{latestFee ? latestFee.month : "No billing period"}</p>
               </div>
               <CheckCircle size={28} className="text-white/20" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="border border-gray-100 rounded-xl p-3">
-                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">Next Due</p>
-                <p className="text-sm font-bold text-gray-900">{feeData.nextDueDate}</p>
+                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">Next Due Date</p>
+                <p className="text-sm font-bold text-gray-900">
+                  {latestFee?.dueDate ? new Date(latestFee.dueDate).toLocaleDateString("en-GB") : "—"}
+                </p>
               </div>
               <div className="border border-gray-100 rounded-xl p-3">
-                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">Amount</p>
-                <p className="text-sm font-bold text-gray-900">{feeData.nextAmount}</p>
+                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">Fee Amount</p>
+                <p className="text-sm font-bold text-gray-900">
+                  {latestFee ? `Rs. ${latestFee.amount?.toLocaleString()}` : "—"}
+                </p>
               </div>
             </div>
             <div className="border border-gray-100 rounded-xl p-3 flex items-center gap-2">
               <Clock size={13} className="text-gray-400 shrink-0" />
               <p className="text-xs text-gray-500">
-                Outstanding Balance: <span className="font-semibold text-gray-900">Rs. 0</span>
+                Unpaid / Overdue Dues: <span className="font-semibold text-gray-900">{unpaidFeesCount} fee record(s)</span>
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Complaints + Visitors - MOCK, modules not built yet ── */}
+      {/* ── Complaints + Visitors ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Complaints */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -290,6 +293,9 @@ export default function DashboardPage() {
                 </span>
               </div>
             ))}
+            {recentComplaints.length === 0 && (
+              <p className="p-5 text-center text-xs text-gray-400">No complaints submitted yet.</p>
+            )}
           </div>
 
           <div className="px-5 py-4 border-t border-gray-100">
@@ -301,6 +307,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Visitors - REAL DATA */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -312,26 +319,31 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="divide-y divide-gray-100">
-            {recentVisitors.map((v, i) => (
-              <div key={i} className="px-5 py-4 flex items-start justify-between gap-3">
+            {recentVisitorsList.map((v: any) => (
+              <div key={v._id} className="px-5 py-4 flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
                     <span className="text-[11px] font-bold text-gray-600">
-                      {v.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                      {v.visitorName.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
                     </span>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{v.name}</p>
+                    <p className="text-sm font-semibold text-gray-900 truncate">{v.visitorName}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{v.purpose}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">{v.date}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Phone: {v.visitorPhone}</p>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Checked out</p>
-                  <p className="text-xs font-semibold text-gray-800 mt-0.5">{v.checkOut}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Status</p>
+                  <p className="text-xs font-semibold text-gray-800 mt-0.5">
+                    {v.checkOutTime ? `Out: ${new Date(v.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : "Checked In"}
+                  </p>
                 </div>
               </div>
             ))}
+            {recentVisitorsList.length === 0 && (
+              <p className="p-5 text-center text-xs text-gray-400">No visitors logged yet.</p>
+            )}
           </div>
           <div className="px-5 py-4 border-t border-gray-100 bg-gray-50">
             <div className="flex items-center gap-2 text-xs text-gray-500">

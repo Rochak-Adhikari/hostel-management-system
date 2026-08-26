@@ -5,27 +5,38 @@ import {
   BedDouble,
   CreditCard,
   AlertTriangle,
+  Bell,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getAllStudents } from "@/api/studentapi";
 import { getAllRooms } from "@/api/roomapi";
 import { getAllComplaints } from "@/api/complaintapi";
+import { getAllFees } from "@/api/feeapi";
+import { getAllNotices } from "@/api/noticeapi";
 
 export default function DashboardPage() {
   // ── DATA FETCHING 
+  // Sabai student fetch garne
   const { data: studentsData } = useQuery({
     queryKey: ["students", "student"],
     queryFn: () => getAllStudents("student"),
   });
   const students = studentsData?.data ?? [];
 
+  // Student Map resolve garna student name
+  const studentsMap = new Map<string, any>();
+  students.forEach((s: any) => studentsMap.set(s._id, s));
+
+  // Sabai room fetch garne
   const { data: roomsData } = useQuery({
     queryKey: ["rooms"],
     queryFn: getAllRooms,
   });
   const rooms = roomsData?.data ?? [];
 
+  // Sabai complaint fetch garne
   const { data: complaintsData } = useQuery({
     queryKey: ["complaints"],
     queryFn: getAllComplaints,
@@ -34,7 +45,24 @@ export default function DashboardPage() {
   const pendingComplaintsCount = complaints.filter((c: any) => c.status === "Pending").length;
   const recentComplaints = [...complaints].reverse().slice(0, 4);
 
-  // ── DERIVED STATS (real data bata calculate garx) 
+  // Sabai fee records fetch garne
+  const { data: feesData } = useQuery({
+    queryKey: ["fees"],
+    queryFn: getAllFees,
+  });
+  const fees = feesData?.data ?? [];
+  const totalRevenue = fees.filter((f: any) => f.status === "Paid").reduce((sum: number, f: any) => sum + f.amount, 0);
+  const recentFees = [...fees].slice(0, 5);
+
+  // Sabai notice fetch garne
+  const { data: noticesData } = useQuery({
+    queryKey: ["notices"],
+    queryFn: getAllNotices,
+  });
+  const notices = noticesData?.data ?? [];
+  const recentNotices = [...notices].slice(0, 4);
+
+  // ── DERIVED STATS (real data bata calculate garne) 
   const totalStudents = students.length;
   const totalRooms = rooms.length;
   const occupiedRooms = rooms.filter((r: any) => r.Occupied >= r.Capacity).length;
@@ -43,6 +71,15 @@ export default function DashboardPage() {
   const totalCapacity = rooms.reduce((sum: number, r: any) => sum + r.Capacity, 0);
   const totalOccupied = rooms.reduce((sum: number, r: any) => sum + r.Occupied, 0);
   const occupancyPct = totalCapacity > 0 ? Math.round((totalOccupied / totalCapacity) * 100) : 0;
+
+  // Student ko name nikalne helper function
+  function getStudentName(studentField: string | { _id: string; full_name: string }): string {
+    if (typeof studentField === "object" && studentField !== null) {
+      return studentField.full_name || "Unknown Student";
+    }
+    const studentObj = studentsMap.get(studentField);
+    return studentObj?.full_name || "Unknown Student";
+  }
 
   const stats = [
     {
@@ -70,9 +107,8 @@ export default function DashboardPage() {
       icon: BedDouble,
     },
     {
-      // MOCK - Fee module banauna baki xa, so value is 0
       title: "Monthly Revenue",
-      value: "NPR 0",
+      value: `Rs. ${totalRevenue.toLocaleString()}`,
       dark: true,
       icon: CreditCard,
     },
@@ -172,43 +208,53 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Recent Fee Payments - MOCK, Fee module build garnu baki xa */}
+          {/* Recent Fee Payments - REAL DATA */}
           <div className="bg-white border rounded-xl p-6">
             <div className="flex flex-col sm:flex-row sm:justify-between gap-2 mb-5">
               <h2 className="text-xl font-semibold">
                 Recent Fee Payments
               </h2>
 
-              <button className="text-sm font-semibold">
-                View All
-              </button>
+              <Link href="/admin/payments" className="text-sm font-semibold text-gray-900 hover:underline">
+                View All ↗
+              </Link>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px]">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3">
-                      Student
-                    </th>
-                    <th className="text-left py-3">
-                      Room
-                    </th>
-                    <th className="text-left py-3">
-                      Date
-                    </th>
-                    <th className="text-right py-3">
-                      Status
-                    </th>
+                  <tr className="border-b text-xs text-gray-500 uppercase tracking-wider">
+                    <th className="text-left py-3">Student</th>
+                    <th className="text-left py-3">Month</th>
+                    <th className="text-left py-3">Amount</th>
+                    <th className="text-right py-3">Status</th>
                   </tr>
                 </thead>
 
-                <tbody>
-                  <tr>
-                    <td colSpan={4} className="py-6 text-center text-gray-400 text-sm">
-                      No fee records yet — Fee module not built.
-                    </td>
-                  </tr>
+                <tbody className="divide-y divide-gray-100">
+                  {recentFees.map((f: any) => (
+                    <tr key={f._id} className="hover:bg-gray-50/50">
+                      <td className="py-3 font-semibold text-sm text-gray-900">
+                        {getStudentName(f.student)}
+                      </td>
+                      <td className="py-3 text-sm text-gray-500">{f.month}</td>
+                      <td className="py-3 text-sm font-bold text-gray-900">Rs. {f.amount?.toLocaleString()}</td>
+                      <td className="py-3 text-right">
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                          f.status === "Paid" ? "bg-black text-white border-black" : "border-gray-300 text-gray-500"
+                        }`}>
+                          {f.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {recentFees.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-6 text-center text-gray-400 text-sm">
+                        No fee records yet.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -249,14 +295,31 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Notices - MOCK, Notice module build garnu baki xa */}
+          {/* Notices - REAL DATA */}
           <div className="bg-white border rounded-xl p-6">
-            <h2 className="text-xl font-semibold mb-4">
-              Latest Notices
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Latest Notices</h2>
+              <Link href="/admin/notices" className="text-xs font-semibold text-gray-500 hover:text-gray-900 underline">
+                View all
+              </Link>
+            </div>
 
-            <div className="space-y-4">
-              <p className="text-sm text-gray-400">No notices yet — Notice module not built.</p>
+            <div className="space-y-3">
+              {recentNotices.map((n: any) => (
+                <div key={n._id} className="border-b border-gray-100 pb-3 last:border-0 last:pb-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold text-gray-900 leading-snug">{n.title}</p>
+                    <Bell size={12} className="text-gray-300 shrink-0 mt-0.5" />
+                  </div>
+                  <p className="text-xs text-gray-500 line-clamp-2 mt-1">{n.content}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    {new Date(n.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+              ))}
+              {recentNotices.length === 0 && (
+                <p className="text-sm text-gray-400">No notices posted yet.</p>
+              )}
             </div>
           </div>
 
@@ -267,22 +330,23 @@ export default function DashboardPage() {
             </h2>
 
             <div className="space-y-3">
-              
               <Link href="/admin/students">
-                <button className="w-full bg-black text-white py-3 rounded-lg">
+                <button className="w-full bg-black text-white py-3 rounded-lg text-sm font-medium hover:bg-gray-900 transition">
                   Assign Room
                 </button>
               </Link>
 
               <Link href="/admin/rooms">
-                <button className="w-full bg-black text-white py-3 rounded-lg">
+                <button className="w-full bg-black text-white py-3 rounded-lg text-sm font-medium hover:bg-gray-900 transition">
                   Manage Rooms
                 </button>
               </Link>
 
-              <button className="w-full bg-black text-white py-3 rounded-lg" disabled>
-                Create Notice
-              </button>
+              <Link href="/admin/notices">
+                <button className="w-full bg-black text-white py-3 rounded-lg text-sm font-medium hover:bg-gray-900 transition">
+                  Create Notice
+                </button>
+              </Link>
             </div>
           </div>
         </div>

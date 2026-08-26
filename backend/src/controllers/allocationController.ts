@@ -37,7 +37,7 @@ export const createAllocation = async (req: Request, res: Response, next: NextFu
     }
 
     const existingAllocations = await Allocation.find({ room: existingRoom._id });
-    const takenBeds = existingAllocations.map((a) => a.bed);
+    const takenBeds = existingAllocations.map((a: any) => a.bed);
     if (takenBeds.includes(bed)) {
       throw new AppError("This bed is already occupied", 400, ErrorCodes.VALIDATION_ERROR);
     }
@@ -234,7 +234,7 @@ export const getAvailableBeds = async (req: Request, res: Response, next: NextFu
     }
     const allBeds = getBedList(room.Capacity);
     const existingAllocations = await Allocation.find({ room: roomId });
-    const takenBeds = existingAllocations.map((a) => a.bed);
+    const takenBeds = existingAllocations.map((a: any) => a.bed);
     const availableBeds = allBeds.filter((b) => !takenBeds.includes(b));
 
     return res.status(200).json({

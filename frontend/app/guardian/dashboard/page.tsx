@@ -8,8 +8,6 @@ import {
   Users,
   Clock,
   ChevronRight,
-  ShieldAlert,
-  ArrowUpRight,
 } from "lucide-react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -17,25 +15,9 @@ import { getStudentById } from "@/api/studentapi";
 import { getAllocationByStudent } from "@/api/allocationapi";
 import { getRoomById } from "@/api/roomapi";
 import { getComplaintsByStudent } from "@/api/complaintapi";
-
-// ── Static Mock Data ─────────────────────────────────────────────────────────
-const paymentsSummary = {
-  status: "PAID",
-  month: "June 2026",
-  nextDueDate: "15 Jul 2026",
-  nextAmount: "Rs. 12,000",
-};
-
-const recentLogs = [
-  { action: "Check-In",  timestamp: "Today, 6:45 PM", status: "Present" },
-  { action: "Check-Out", timestamp: "Yesterday, 8:15 AM", status: "Absent" },
-  { action: "Check-In",  timestamp: "28 Jun 2026, 7:12 PM", status: "Present" },
-];
-
-const notices = [
-  { id: 1, title: "Visitor Timing Update", content: "Visitor hours revised — Morning 10:00 AM–12:00 PM, Evening 4:00 PM–7:00 PM.", date: "28 Jun 2026" },
-  { id: 2, title: "Water Supply Interruption", content: "Water supply interrupted on 2 July 2026 from 9:00 AM–1:00 PM for maintenance.", date: "27 Jun 2026" },
-];
+import { getFeesByStudent } from "@/api/feeapi";
+import { getVisitorsByStudent } from "@/api/visitorapi";
+import { getAllNotices } from "@/api/noticeapi";
 
 export default function GuardianDashboard() {
   // localStorage bata login garda save vaisako user info nikalne
@@ -77,6 +59,32 @@ export default function GuardianDashboard() {
   const complaintsPending = childComplaints.filter((c: any) => c.status === "Pending").length;
   const complaintsInProgress = childComplaints.filter((c: any) => c.status === "In Progress").length;
   const complaintsActive = complaintsPending + complaintsInProgress;
+
+  // Child ko fee records fetch garne
+  const { data: feesDataRes } = useQuery({
+    queryKey: ["childFees", currentUser?.linked_student],
+    queryFn: () => getFeesByStudent(currentUser.linked_student),
+    enabled: !!currentUser?.linked_student,
+  });
+  const childFees: any[] = feesDataRes?.data ?? [];
+  const latestFee = childFees[0];
+
+  // Child ko visitor logs fetch garne
+  const { data: visitorsDataRes } = useQuery({
+    queryKey: ["childVisitors", currentUser?.linked_student],
+    queryFn: () => getVisitorsByStudent(currentUser.linked_student),
+    enabled: !!currentUser?.linked_student,
+  });
+  const childVisitors: any[] = visitorsDataRes?.data ?? [];
+  const recentVisitorsList = [...childVisitors].slice(0, 4);
+
+  // Sabai notice fetch garne
+  const { data: noticesDataRes } = useQuery({
+    queryKey: ["notices"],
+    queryFn: getAllNotices,
+  });
+  const notices: any[] = noticesDataRes?.data ?? [];
+  const recentNotices = notices.slice(0, 3);
 
   const childName = child?.full_name ?? "No linked student";
   const childId = child?._id ?? "-";
@@ -128,8 +136,8 @@ export default function GuardianDashboard() {
               <ChevronRight size={13} className="text-white/30" />
             </div>
             <p className="text-[10px] uppercase tracking-widest text-white/40 font-medium mb-1">Payment Status</p>
-            <p className="text-lg font-black text-white">{paymentsSummary.status}</p>
-            <p className="text-xs text-white/50 mt-0.5">{paymentsSummary.month}</p>
+            <p className="text-lg font-black text-white">{latestFee ? latestFee.status.toUpperCase() : "NO FEES"}</p>
+            <p className="text-xs text-white/50 mt-0.5">{latestFee ? latestFee.month : "No billing history"}</p>
           </div>
         </Link>
 
@@ -148,8 +156,8 @@ export default function GuardianDashboard() {
           </div>
         </Link>
 
-        {/* Last active log */}
-        <Link href="/guardian/leaves" className="group">
+        {/* Visitor Logs count */}
+        <Link href="/guardian/leave-requests" className="group">
           <div className="bg-white border border-gray-200 rounded-2xl p-4 hover:border-gray-400 transition-colors h-full">
             <div className="flex items-center justify-between mb-3">
               <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-gray-200 transition-colors">
@@ -157,9 +165,9 @@ export default function GuardianDashboard() {
               </div>
               <ChevronRight size={13} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
             </div>
-            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">Last Activity</p>
-            <p className="text-lg font-black text-gray-900">{recentLogs[0].action}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{recentLogs[0].timestamp}</p>
+            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-1">Visitor Activity</p>
+            <p className="text-lg font-black text-gray-900">{childVisitors.length}</p>
+            <p className="text-xs text-gray-400 mt-0.5">Visitor logs recorded</p>
           </div>
         </Link>
       </div>
@@ -193,37 +201,33 @@ export default function GuardianDashboard() {
       {/* ── 2 Col Detail Grid ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         
-        {/* Entry / Exit Activity Logs */}
+        {/* Visitor Activity Logs */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock size={14} className="text-gray-500" />
-              <h2 className="text-sm font-semibold text-gray-700">Recent Entry/Exit Logs</h2>
+              <h2 className="text-sm font-semibold text-gray-700">Recent Child Visitors</h2>
             </div>
-            <Link href="/guardian/leaves" className="text-[11px] text-gray-500 hover:text-gray-800 underline underline-offset-2">
-              View all logs ↗
-            </Link>
           </div>
           <div className="divide-y divide-gray-100">
-            {recentLogs.map((log, i) => (
-              <div key={i} className="px-5 py-3.5 flex items-center justify-between gap-3">
+            {recentVisitorsList.map((v: any) => (
+              <div key={v._id} className="px-5 py-3.5 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">{log.action}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{log.timestamp}</p>
+                  <p className="text-sm font-semibold text-gray-800">{v.visitorName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Purpose: {v.purpose} · Phone: {v.visitorPhone}</p>
                 </div>
-                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                  log.action === "Check-In"
-                    ? "bg-gray-100 text-gray-800 border border-gray-200"
-                    : "border border-gray-300 text-gray-400"
-                }`}>
-                  {log.action.toUpperCase()}
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full border border-gray-300 text-gray-600">
+                  {v.checkOutTime ? "CHECKED OUT" : "IN HOSTEL"}
                 </span>
               </div>
             ))}
+            {recentVisitorsList.length === 0 && (
+              <p className="px-5 py-6 text-center text-xs text-gray-400">No recent visitor logs found.</p>
+            )}
           </div>
         </div>
 
-        {/* Notice Board */}
+        {/* Notice Board Feed */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -232,16 +236,21 @@ export default function GuardianDashboard() {
             </div>
           </div>
           <div className="divide-y divide-gray-100">
-            {notices.map((n) => (
-              <div key={n.id} className="px-5 py-4">
+            {recentNotices.map((n: any) => (
+              <div key={n._id} className="px-5 py-4">
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <p className="text-sm font-semibold text-gray-900 leading-snug">{n.title}</p>
                   <Bell size={12} className="text-gray-300 shrink-0 mt-0.5" />
                 </div>
-                <p className="text-xs text-gray-500 leading-relaxed">{n.content}</p>
-                <p className="text-[10px] text-gray-400 mt-2">Posted: {n.date}</p>
+                <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{n.content}</p>
+                <p className="text-[10px] text-gray-400 mt-2">
+                  Posted: {new Date(n.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                </p>
               </div>
             ))}
+            {recentNotices.length === 0 && (
+              <p className="px-5 py-6 text-center text-xs text-gray-400">No notices posted yet.</p>
+            )}
           </div>
         </div>
 

@@ -1,57 +1,142 @@
-import {
-  CreditCard,
-  Wallet,
-  CalendarDays,
-  CircleDollarSign,
-} from "lucide-react";
+"use client";
 
-const paymentHistory = [
-  { receiptNo: "REC-1023", date: "12 Jun 2026", amount: 12000, method: "eSewa", status: "Paid", monthYear: "June 2026" },
-  { receiptNo: "REC-1018", date: "12 May 2026", amount: 12000, method: "Khalti", status: "Paid", monthYear: "May 2026" },
-  { receiptNo: "REC-1012", date: "12 Apr 2026", amount: 12000, method: "Bank Transfer", status: "Paid", monthYear: "April 2026" },
-  { receiptNo: "REC-1007", date: "12 Mar 2026", amount: 12000, method: "Cash", status: "Paid", monthYear: "March 2026" },
-];
+import { CreditCard, Wallet, CalendarDays, CircleDollarSign, AlertCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getFeesByStudent } from "@/api/feeapi";
+import { getAllocationByStudent } from "@/api/allocationapi";
+import { getRoomById } from "@/api/roomapi";
 
-const upcomingPayments = [
-  { label: "July Hostel Fee", dueDate: "15 Jul 2026", amount: "Rs. 12,000", status: "Upcoming" },
-  { label: "August Hostel Fee", dueDate: "15 Aug 2026", amount: "Rs. 12,000", status: "Upcoming" },
-  { label: "September Hostel Fee", dueDate: "15 Sep 2026", amount: "Rs. 12,000", status: "Upcoming" },
-];
-
-const paymentMethods = ["eSewa", "Khalti", "Bank Transfer", "Cash Office"];
-
-const feeBreakdown = [
-  { label: "Hostel Fee", value: "Rs. 12,000" },
-  { label: "Security Deposit", value: "Rs. 10,000" },
-  { label: "Electricity", value: "Included" },
-  { label: "Internet", value: "Included" },
-  { label: "Maintenance", value: "Included" },
-];
+type Fee = {
+  _id: string;
+  student: string;
+  month: string;
+  amount: number;
+  status: "Unpaid" | "Paid" | "Overdue";
+  dueDate: string;
+  paidDate?: string;
+  paymentMethod?: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 const STATUS_STYLES: Record<string, string> = {
   Paid: "bg-black text-white",
-  Pending: "bg-gray-100 text-gray-600",
-  Due: "bg-red-100 text-red-600",
+  Unpaid: "bg-gray-100 text-gray-700 border border-gray-300",
+  Overdue: "bg-red-100 text-red-700 border border-red-300 font-bold",
 };
 
-export default function FeesPage() {
+export default function StudentFeesPage() {
+  // localStorage bata login garda save vaisako user info nikalne
+  const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+  const currentUser = storedUser ? JSON.parse(storedUser) : null;
+
+  // Yo student ko sabai fee records fetch garne
+  const { data: feesRes, isPending: isFeesLoading, isError: isFeesError } = useQuery({
+    queryKey: ["myFees", currentUser?.id],
+    queryFn: () => getFeesByStudent(currentUser.id),
+    enabled: !!currentUser?.id,
+  });
+  const fees: Fee[] = feesRes?.data ?? [];
+
+  // Student ko room allocation fetch garne (monthly fee breakdown ko lagi)
+  const { data: allocationRes } = useQuery({
+    queryKey: ["myAllocation", currentUser?.id],
+    queryFn: () => getAllocationByStudent(currentUser.id),
+    enabled: !!currentUser?.id,
+  });
+  const allocation = allocationRes?.data;
+
+  // Room details fetch garne
+  const { data: roomRes } = useQuery({
+    queryKey: ["myRoom", allocation?.room],
+    queryFn: () => getRoomById(allocation.room),
+    enabled: !!allocation?.room,
+  });
+  const room = roomRes?.data;
+
+  const totalPaid = fees.filter((f) => f.status === "Paid").reduce((sum, f) => sum + f.amount, 0);
+  const unpaidFees = fees.filter((f) => f.status === "Unpaid" || f.status === "Overdue");
+  const totalOutstanding = unpaidFees.reduce((sum, f) => sum + f.amount, 0);
+  const hasOverdue = fees.some((f) => f.status === "Overdue");
+
+  const latestFee = fees[0];
+
+  if (!currentUser) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+        <p className="text-gray-500">Please log in to view fee records.</p>
+      </div>
+    );
+  }
+
+  if (isFeesLoading) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+        <p className="text-gray-500">Loading your fee history...</p>
+      </div>
+    );
+  }
+
+  if (isFeesError) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-red-500">
+        <p>Failed to load fee records. Please try again later.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-black">Fee &amp; Payments</h1>
         <p className="text-gray-500 mt-2 text-sm sm:text-base">
-          View your hostel fee status, payment history, upcoming dues, and download receipts.
+          Track your hostel billing status, payment history, and due dates.
         </p>
       </div>
 
-      {/* Summary Cards */}
+      {/* Overdue / Unpaid Alert Banner */}
+      {unpaidFees.length > 0 && (
+        <div className={`p-4 rounded-2xl border flex items-center gap-3 ${hasOverdue ? "bg-red-50 border-red-200 text-red-800" : "bg-amber-50 border-amber-200 text-amber-800"}`}>
+          <AlertCircle size={20} className="shrink-0" />
+          <div>
+            <p className="text-sm font-bold">
+              {hasOverdue ? "Action Required: You have overdue hostel fee payments!" : "Payment Pending: You have pending hostel fee dues."}
+            </p>
+            <p className="text-xs mt-0.5 opacity-90">
+              Total outstanding balance: <span className="font-bold">Rs. {totalOutstanding.toLocaleString()}</span>. Please clear your dues at the hostel office.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Stat Cards */}
       <div className="grid grid-cols-1 xs:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
         {[
-          { label: "Current Status", value: "PAID", sub: "No outstanding payments.", icon: CreditCard },
-          { label: "Next Due Date", value: "15 Jul", sub: "2026 Payment Cycle", icon: CalendarDays },
-          { label: "Outstanding Balance", value: "Rs. 0", sub: "Everything has been paid.", icon: Wallet },
-          { label: "Total Paid", value: "Rs. 48,000", sub: "Current academic session.", icon: CircleDollarSign },
+          {
+            label: "Current Status",
+            value: latestFee ? latestFee.status.toUpperCase() : "NO FEES",
+            sub: latestFee ? `Latest period: ${latestFee.month}` : "No billing history yet",
+            icon: CreditCard,
+          },
+          {
+            label: "Next Due Date",
+            value: latestFee?.dueDate ? new Date(latestFee.dueDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) : "N/A",
+            sub: latestFee?.dueDate ? new Date(latestFee.dueDate).getFullYear().toString() : "No active dues",
+            icon: CalendarDays,
+          },
+          {
+            label: "Outstanding Balance",
+            value: `Rs. ${totalOutstanding.toLocaleString()}`,
+            sub: totalOutstanding > 0 ? "Pending payment" : "Everything cleared",
+            icon: Wallet,
+          },
+          {
+            label: "Total Paid",
+            value: `Rs. ${totalPaid.toLocaleString()}`,
+            sub: "Total payments settled",
+            icon: CircleDollarSign,
+          },
         ].map(({ label, value, sub, icon: Icon }) => (
           <div key={label} className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6">
             <div className="flex items-center justify-between">
@@ -66,209 +151,74 @@ export default function FeesPage() {
         ))}
       </div>
 
-      {/* Payment Details + Progress */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
-        {/* Details */}
-        <div className="xl:col-span-2 bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-8">
-          <h2 className="text-lg sm:text-xl font-semibold mb-6">Current Payment Details</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-5 gap-x-10">
-            {[
-              ["Student Name", "Rochak Adhikari"],
-              ["Room Number", "A-001"],
-              ["Academic Session", "2026 / 2027"],
-              ["Monthly Fee", "Rs. 12,000"],
-              ["Security Deposit", "Rs. 10,000"],
-              ["Discount", "Rs. 0"],
-              ["Total Amount", "Rs. 22,000"],
-              ["Amount Paid", "Rs. 22,000"],
-              ["Remaining Balance", "Rs. 0"],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <p className="text-sm text-gray-500">{label}</p>
-                <h3 className="font-semibold mt-1">{value}</h3>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Progress */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-8 flex flex-col justify-center">
-          <h2 className="text-lg sm:text-xl font-semibold mb-6">Payment Progress</h2>
-          <div className="space-y-4">
-            <div className="flex justify-between">
-              <span className="font-medium">Completed</span>
-              <span className="font-semibold">100%</span>
-            </div>
-            <div className="w-full h-3 rounded-full bg-gray-200 overflow-hidden">
-              <div className="w-full h-full bg-black rounded-full" />
-            </div>
-            <p className="font-medium">All hostel fees have been paid.</p>
-            <p className="text-sm text-gray-500">
-              Your next payment is scheduled for{" "}
-              <span className="font-medium text-black">15 July 2026.</span>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Upcoming Payments */}
+      {/* Room Fee Details */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-8">
-        <h2 className="text-lg sm:text-xl font-semibold mb-6">Upcoming Payments</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-          {upcomingPayments.map((p) => (
-            <div key={p.label} className="border border-gray-200 rounded-xl p-5">
-              <h3 className="font-semibold text-base sm:text-lg">{p.label}</h3>
-              <div className="space-y-2 mt-4">
-                {[
-                  ["Due Date", p.dueDate],
-                  ["Amount", p.amount],
-                  ["Status", p.status],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex justify-between text-sm">
-                    <span className="text-gray-500">{label}</span>
-                    <span className="font-medium">{value}</span>
-                  </div>
-                ))}
-              </div>
+        <h2 className="text-lg sm:text-xl font-semibold mb-6">Current Room Fee Allocation</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+          {[
+            ["Student Name", currentUser?.full_name || "—"],
+            ["Allocated Room", room ? `Room ${room.RoomNumber} (Block ${room.block})` : "Unassigned"],
+            ["Room Type", room?.RoomType || "—"],
+            ["Monthly Room Fee", room ? `Rs. ${room.MonthlyFee?.toLocaleString()}` : "—"],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <p className="text-xs text-gray-400 uppercase font-medium">{label}</p>
+              <h3 className="font-semibold text-base text-gray-900 mt-1">{value}</h3>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Payment Methods */}
+      {/* Payment History Ledger */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-8">
-        <h2 className="text-lg sm:text-xl font-semibold mb-6">Available Payment Methods</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
-          {paymentMethods.map((m) => (
-            <div key={m} className="border rounded-xl p-4 sm:p-6 text-center">
-              <h3 className="font-semibold text-sm sm:text-base">{m}</h3>
-              <p className="text-xs sm:text-sm text-gray-500 mt-2">Available</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-8">
-        <h2 className="text-lg sm:text-xl font-semibold mb-6">Quick Actions</h2>
-        <div className="flex flex-wrap gap-3">
-          {["Pay Hostel Fee", "Download Receipt", "View Payment History", "Contact Accounts Office"].map(
-            (label, i) => (
-              <button
-                key={label}
-                className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium text-sm transition ${
-                  i === 0
-                    ? "bg-black text-white hover:bg-gray-900"
-                    : "border border-black hover:bg-gray-50"
-                }`}
-              >
-                {label}
-              </button>
-            )
-          )}
-        </div>
-      </div>
-
-      {/* Payment Notification */}
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-8">
-        <h2 className="text-lg sm:text-xl font-semibold mb-3">Payment Notification</h2>
-        <p className="text-base font-medium">No pending dues.</p>
-        <p className="text-gray-500 mt-2 text-sm">
-          Your next hostel payment is scheduled for{" "}
-          <span className="font-medium text-black">15 July 2026.</span>
-        </p>
-      </div>
-
-      {/* Payment History */}
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg sm:text-xl font-semibold">Payment History</h2>
-            <p className="text-sm text-gray-500 mt-1">View all previous hostel fee payments.</p>
-          </div>
-          <div className="flex flex-col xs:flex-row gap-2">
-            <input
-              type="text"
-              placeholder="Search receipt..."
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
-            />
-            <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
-              <option>All Months</option>
-              {["March", "April", "May", "June", "July"].map((m) => (
-                <option key={m}>{m}</option>
-              ))}
-            </select>
+            <h2 className="text-lg sm:text-xl font-semibold">Fee &amp; Payment History</h2>
+            <p className="text-sm text-gray-500 mt-1">Full record of all your monthly hostel billings and receipts.</p>
           </div>
         </div>
 
-        <div className="overflow-x-auto -mx-5 sm:-mx-8">
-          <div className="px-5 sm:px-8">
-            <table className="w-full border-collapse min-w-[600px]">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  {["Receipt No", "Month / Year", "Payment Date", "Amount", "Method", "Status"].map((h) => (
-                    <th key={h} className="text-left py-3 text-sm font-semibold text-gray-600">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {paymentHistory.map((p) => (
-                  <tr key={p.receiptNo} className="border-b border-gray-100">
-                    <td className="py-4 text-sm font-medium">{p.receiptNo}</td>
-                    <td className="py-4 text-sm text-gray-500">{p.monthYear}</td>
-                    <td className="py-4 text-sm text-gray-500">{p.date}</td>
-                    <td className="py-4 text-sm font-medium">Rs. {p.amount.toLocaleString()}</td>
-                    <td className="py-4 text-sm text-gray-500">{p.method}</td>
-                    <td className="py-4">
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${STATUS_STYLES[p.status]}`}>
-                        {p.status}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse min-w-[650px] text-left">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50/50">
+                {["Billing Month", "Amount", "Due Date", "Paid Date", "Payment Method", "Status"].map((h) => (
+                  <th key={h} className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {fees.map((f) => {
+                const isWarning = f.status === "Unpaid" || f.status === "Overdue";
+
+                return (
+                  <tr key={f._id} className={`hover:bg-gray-50/50 transition ${isWarning ? "bg-red-50/20" : ""}`}>
+                    <td className="py-4 px-4 text-sm font-semibold text-gray-900">{f.month}</td>
+                    <td className="py-4 px-4 text-sm font-bold text-gray-900">Rs. {f.amount.toLocaleString()}</td>
+                    <td className="py-4 px-4 text-sm text-gray-500">
+                      {f.dueDate ? new Date(f.dueDate).toLocaleDateString("en-GB") : "—"}
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-500">
+                      {f.paidDate ? new Date(f.paidDate).toLocaleDateString("en-GB") : "—"}
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-500">{f.paymentMethod || "—"}</td>
+                    <td className="py-4 px-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_STYLES[f.status] || "bg-gray-100 text-gray-600"}`}>
+                        {f.status}
                       </span>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Receipts */}
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-8">
-        <h2 className="text-lg sm:text-xl font-semibold mb-6">Recent Receipts</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-          {[
-            { label: "June 2026 Hostel Fee", receipt: "REC-1023" },
-            { label: "Security Deposit Receipt", receipt: "REC-1001" },
-          ].map((r) => (
-            <div key={r.label} className="border rounded-xl p-4 sm:p-6 flex items-center justify-between gap-3">
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base">{r.label}</h3>
-                <p className="text-xs sm:text-sm text-gray-500 mt-1">Receipt No: {r.receipt}</p>
-              </div>
-              <button className="shrink-0 border border-black rounded-lg px-3 sm:px-4 py-2 text-sm hover:bg-gray-100 transition">
-                Download PDF
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Fee Breakdown */}
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-8">
-        <h2 className="text-lg sm:text-xl font-semibold mb-6">Fee Breakdown</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse min-w-[300px]">
-            <tbody>
-              {feeBreakdown.map(({ label, value }) => (
-                <tr key={label} className="border-b border-gray-100">
-                  <td className="py-3 font-medium text-sm">{label}</td>
-                  <td className="py-3 text-right text-sm">{value}</td>
+                );
+              })}
+              {fees.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-gray-400 text-sm">
+                    No fee records found.
+                  </td>
                 </tr>
-              ))}
-              <tr>
-                <td className="py-4 font-bold text-base">Total</td>
-                <td className="py-4 text-right font-bold text-base">Rs. 22,000</td>
-              </tr>
+              )}
             </tbody>
           </table>
         </div>
