@@ -30,3 +30,13 @@ export const setPassword = async (data: ISetPassword) => {
   const response = await axiosInstance.post('http://localhost:8080/api/v1/auth/set-password', data)
   return response.data
 }
+
+export const logout = async () => {
+  const response = await axiosInstance.post('http://localhost:8080/api/v1/auth/logout')
+  return response.data
+}
+
+export const changePassword = async (data: any) => {
+  const response = await axiosInstance.post('http://localhost:8080/api/v1/auth/change-password', data)
+  return response.data
+}

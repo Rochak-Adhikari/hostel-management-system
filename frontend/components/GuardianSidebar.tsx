@@ -25,9 +25,27 @@ const navLinks = [
   { name: "Room Requests", href: "/guardian/room-requests", icon: ArrowRightLeft },
 ];
 
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { logout } from "@/api/authapi";
+
 export default function GuardianSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (e) {
+      console.error("Logout error:", e);
+    } finally {
+      localStorage.removeItem("user");
+      queryClient.clear();
+      router.push("/login");
+    }
+  };
 
   return (
     <>
@@ -126,12 +144,19 @@ export default function GuardianSidebar() {
         {/* Bottom */}
         <div className="flex flex-col gap-3 px-3 pb-6">
           <Link
-            href="/login"
+            href="/guardian/settings"
             className="flex items-center gap-2 text-xs font-medium text-black/60 hover:text-black"
+          >
+            <Settings size={16} strokeWidth={1.5} />
+            <span>Settings</span>
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-xs font-medium text-black/60 hover:text-black text-left w-full"
           >
             <LogOut size={16} strokeWidth={1.5} />
             <span>Log Out</span>
-          </Link>
+          </button>
         </div>
       </aside>
     </>

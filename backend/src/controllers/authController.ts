@@ -521,4 +521,90 @@ export const setPassword = async (req: Request, res: Response, next: NextFunctio
   } catch (error: any) {
     return next(error);
   }
+};
+
+// LOGOUT - Clear accessToken cookie
+export const logout = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const isProd = ENV_CONFIG.NODE_ENV === "production";
+
+    return res.clearCookie("accessToken", {
+      httpOnly: true,
+      sameSite: isProd ? "none" : "lax",
+      secure: isProd,
+    }).status(200).json({
+      message: "Logged out successfully",
+      code: "success",
+      status: "success",
+      data: null,
+    });
+
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+// CHANGE PASSWORD (Logged in user ko password change garna ko lagi)
+export const changePassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { current_password, new_password, confirm_password } = req.body;
+    const userId = req.user?.id;
+
+    if (!current_password || !new_password || !confirm_password) {
+      throw new AppError(
+        "All password fields are required",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
+
+    if (new_password.length < 6) {
+      throw new AppError(
+        "New password must be at least 6 characters long",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
+
+    if (new_password !== confirm_password) {
+      throw new AppError(
+        "New password and confirm password do not match",
+        400,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
+
+    const user = await User.findById(userId).select("+password");
+
+    if (!user || !user.password) {
+      throw new AppError(
+        "User not found",
+        404,
+        ErrorCodes.NOT_FOUND
+      );
+    }
+
+    const isMatch = await compareHash(current_password, user.password);
+
+    if (!isMatch) {
+      throw new AppError(
+        "Current password does not match",
+        400,
+        ErrorCodes.INVALID_CREDENTIALS
+      );
+    }
+
+    user.password = await hashText(new_password);
+    await user.save();
+
+    return res.status(200).json({
+      message: "Password changed successfully",
+      code: "success",
+      status: "success",
+      data: null,
+    });
+
+  } catch (error: any) {
+    return next(error);
+  }
 };

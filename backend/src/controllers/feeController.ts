@@ -165,6 +165,9 @@ export const getfeeByStudent = async (req: Request, res: Response, next: NextFun
   try {
     const { studentId } = req.params;
 
+    // Guardian ra Student ko ownership authorization check
+    await assertCanAccessStudent(req, studentId);
+
     const fee = await Fee.find({ student: studentId }).sort({ createdAt: -1 });
 
     return res.status(200).json({

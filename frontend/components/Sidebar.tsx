@@ -30,9 +30,27 @@ const navLinks = [
   { name: "Visitor Log", href: "/student/visitor-log", icon: Users },
 ];
 
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { logout } from "@/api/authapi";
+
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (e) {
+      console.error("Logout error:", e);
+    } finally {
+      localStorage.removeItem("user");
+      queryClient.clear();
+      router.push("/login");
+    }
+  };
 
   return (
     <>
@@ -131,19 +149,19 @@ export default function Sidebar() {
         {/* Bottom: Settings + Log Out */}
         <div className="flex flex-col gap-3 px-2 pb-6">
           <Link
-            href="/settings"
+            href="/student/settings"
             className="flex items-center gap-2 text-xs font-medium text-black/60 hover:text-black"
           >
             <Settings size={16} strokeWidth={1.5} />
             <span>Settings</span>
           </Link>
-          <Link
-            href="/login"
-            className="flex items-center gap-2 text-xs font-medium text-black/60 hover:text-black"
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-xs font-medium text-black/60 hover:text-black text-left w-full"
           >
             <LogOut size={16} strokeWidth={1.5} />
             <span>Log Out</span>
-          </Link>
+          </button>
         </div>
       </aside>
     </>

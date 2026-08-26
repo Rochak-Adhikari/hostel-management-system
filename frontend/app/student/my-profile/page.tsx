@@ -12,7 +12,6 @@ import {
   MessageSquareWarning,
   Bed,
   Clock,
-  Download,
   X,
   Pencil,
 } from "lucide-react";
@@ -26,18 +25,30 @@ import { getRoomById } from "@/api/roomapi";
 import { getFeesByStudent } from "@/api/feeapi";
 import { getComplaintsByStudent } from "@/api/complaintapi";
 
-// Profile update validation schema
+// Profile update validation schema using nested guardian object
 const editProfileSchema = yup.object({
   full_name: yup.string().required("Full name is required"),
   phone: yup.string().required("Phone number is required"),
   address: yup.string().optional(),
   gender: yup.string().optional(),
-  guardianName: yup.string().optional(),
-  guardianPhone: yup.string().optional(),
-  guardianEmail: yup.string().email("Invalid email format").optional(),
+  guardian: yup.object({
+    name: yup.string().optional(),
+    phone: yup.string().optional(),
+    email: yup.string().email("Invalid email format").optional(),
+  }).optional(),
 });
 
-type EditProfileFormValues = yup.InferType<typeof editProfileSchema>;
+type EditProfileFormValues = {
+  full_name: string;
+  phone: string;
+  address?: string;
+  gender?: string;
+  guardian?: {
+    name?: string;
+    phone?: string;
+    email?: string;
+  };
+};
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 function Field({
@@ -128,7 +139,7 @@ export default function MyProfilePage() {
   const complaints: any[] = complaintsRes?.data ?? [];
   const resolvedCount = complaints.filter((c: any) => c.status === "Resolved").length;
 
-  // React hook form for profile edit
+  // React hook form for profile edit using nested guardian
   const {
     register,
     handleSubmit,
@@ -143,7 +154,6 @@ export default function MyProfilePage() {
     mutationFn: (data: EditProfileFormValues) => updateStudent(currentUser.id, data),
     onSuccess: (updatedRes) => {
       queryClient.invalidateQueries({ queryKey: ["studentProfile", currentUser?.id] });
-      // localStorage update garne local user full_name, etc.
       if (storedUser && updatedRes?.data) {
         const updatedUser = { ...currentUser, ...updatedRes.data };
         localStorage.setItem("user", JSON.stringify(updatedUser));
@@ -161,9 +171,9 @@ export default function MyProfilePage() {
       setValue("phone", student.phone || "");
       setValue("address", student.address || "");
       setValue("gender", student.gender || "Male");
-      setValue("guardianName", student.guardianName || "");
-      setValue("guardianPhone", student.guardianPhone || "");
-      setValue("guardianEmail", student.guardianEmail || "");
+      setValue("guardian.name", student.guardian?.name || "");
+      setValue("guardian.phone", student.guardian?.phone || "");
+      setValue("guardian.email", student.guardian?.email || "");
     }
     setShowEditModal(true);
   }
@@ -206,6 +216,10 @@ export default function MyProfilePage() {
   const floorDisplay = room ? room.Floor : "N/A";
   const monthlyFeeDisplay = room ? `Rs. ${room.MonthlyFee?.toLocaleString()}` : "N/A";
   const allocationDateDisplay = allocation?.allocatedDate ? new Date(allocation.allocatedDate).toLocaleDateString("en-GB") : "N/A";
+
+  const guardianNameDisplay = student.guardian?.name || "Not assigned";
+  const guardianPhoneDisplay = student.guardian?.phone || "—";
+  const guardianEmailDisplay = student.guardian?.email || "—";
 
   const stats = [
     { label: "Fee Status", value: latestFee ? latestFee.status.toUpperCase() : "NO FEES", sub: latestFee ? latestFee.month : "No billing", icon: CreditCard },
@@ -329,10 +343,10 @@ export default function MyProfilePage() {
 
         {/* Guardian Details */}
         <Card title="Guardian Details" icon={ShieldCheck}>
-          <Field icon={User2} label="Guardian Name font-semibold"  value={student.guardianName || "Not assigned"} />
-          <Field icon={Phone} label="Guardian Phone" value={student.guardianPhone || "—"} />
-          <Field icon={Mail}  label="Guardian Email" value={student.guardianEmail || "—"} />
-          <Field icon={Phone} label="Emergency Contact" value={student.guardianPhone || student.phone || "—"} accent />
+          <Field icon={User2} label="Guardian Name"  value={guardianNameDisplay} />
+          <Field icon={Phone} label="Guardian Phone" value={guardianPhoneDisplay} />
+          <Field icon={Mail}  label="Guardian Email" value={guardianEmailDisplay} />
+          <Field icon={Phone} label="Emergency Contact" value={guardianPhoneDisplay !== "—" ? guardianPhoneDisplay : (student.phone || "—")} accent />
         </Card>
       </div>
 
@@ -353,8 +367,8 @@ export default function MyProfilePage() {
               ["Phone",          student.phone || "—"],
               ["Email",          student.email || "—"],
               ["Address",        student.address || "—"],
-              ["Guardian",       student.guardianName || "—"],
-              ["Guardian Phone", student.guardianPhone || "—"],
+              ["Guardian",       guardianNameDisplay],
+              ["Guardian Phone", guardianPhoneDisplay],
               ["Admission Date", admissionDate],
               ["Room Number",    roomNumberDisplay],
               ["Room Type",      roomTypeDisplay],
@@ -418,9 +432,9 @@ export default function MyProfilePage() {
                   {...register("gender")}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-white"
                 >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
 
@@ -439,7 +453,7 @@ export default function MyProfilePage() {
                   <label className="block text-xs text-gray-500 mb-1">Guardian Name</label>
                   <input
                     type="text"
-                    {...register("guardianName")}
+                    {...register("guardian.name")}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
                   />
                 </div>
@@ -447,7 +461,7 @@ export default function MyProfilePage() {
                   <label className="block text-xs text-gray-500 mb-1">Guardian Phone</label>
                   <input
                     type="text"
-                    {...register("guardianPhone")}
+                    {...register("guardian.phone")}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
                   />
                 </div>
@@ -455,11 +469,11 @@ export default function MyProfilePage() {
                   <label className="block text-xs text-gray-500 mb-1">Guardian Email</label>
                   <input
                     type="email"
-                    {...register("guardianEmail")}
+                    {...register("guardian.email")}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
                   />
-                  {errors.guardianEmail && (
-                    <p className="text-red-500 text-xs mt-1">{errors.guardianEmail.message}</p>
+                  {errors.guardian?.email && (
+                    <p className="text-red-500 text-xs mt-1">{errors.guardian.email.message}</p>
                   )}
                 </div>
               </div>
