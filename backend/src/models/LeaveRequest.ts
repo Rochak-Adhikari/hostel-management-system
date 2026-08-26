@@ -27,7 +27,7 @@ const leaveRequestSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // leave request ko status (Pending, Approved, Rejected)
+
     status: {
       type: String,
       enum: {

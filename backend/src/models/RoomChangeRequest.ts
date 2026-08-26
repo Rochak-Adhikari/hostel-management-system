@@ -6,7 +6,7 @@ const roomChangeRequestSchema = new mongoose.Schema(
   {
 
     student: {
-      type: mongoose.Schema.Types.ObjectId,  //->this field points to the data which lives somewhere else kinda like pointer jasto 
+      type: mongoose.Schema.Types.ObjectId,   
       ref: "User",
       required: [true, "Student is required"],
     },
@@ -43,14 +43,14 @@ const roomChangeRequestSchema = new mongoose.Schema(
       default: RoomChangeStatus.PENDING,
     },
 
-    // complaint kun category ko ho (WiFi, Cleanliness, Maintenance, etc)
+    // complaint kun category ko ho 
     adminNote: {
       type: String,
       required: false,
       trim: true,
     },
   },
-  { timestamps: true } // automatically createdAt ra updatedAt date handle garna
+  { timestamps: true } 
 );
 
 export default mongoose.model("RoomChangeRequest", roomChangeRequestSchema);

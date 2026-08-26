@@ -6,7 +6,7 @@ const complaintSchema = new mongoose.Schema(
   {
   
     student: {
-      type: mongoose.Schema.Types.ObjectId,  //->this field points to the data which lives somewhere else kinda like pointer jasto 
+      type: mongoose.Schema.Types.ObjectId, 
       ref: "User",
       required: [true, "Student is required"],
     },
@@ -23,7 +23,7 @@ const complaintSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // complaint ko status (Pending, In Progress, Resolved)
+    // complaint ko status 
     status: {
       type: String,
       enum: {
@@ -33,21 +33,21 @@ const complaintSchema = new mongoose.Schema(
       default: ComplaintStatus.PENDING,
     },
 
-    // complaint kun category ko ho (WiFi, Cleanliness, Maintenance, etc)
+    // complaint kun category ko ho 
     category: {
       type: String,
       required: false,
       trim: true,
     },
 
-    // complaint kasle haleko ho (student, guardian, admin)
+    // complaint kasle haleko ho 
     submittedByRole: {
       type: String,
       enum: ["student", "guardian", "admin"],
       default: "student",
     },
   },
-  { timestamps: true } // automatically createdAt ra updatedAt date handle garna
+  { timestamps: true } 
 );
 
 export default mongoose.model("Complaint", complaintSchema);
