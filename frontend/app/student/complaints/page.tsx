@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X, MessageSquareWarning } from "lucide-react";
+import { Plus, X, MessageSquareWarning, FileText, HelpCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -14,6 +14,7 @@ type Complaint = {
   description: string;
   status: "Pending" | "In Progress" | "Resolved";
   category?: string;
+  submittedByRole?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -49,7 +50,7 @@ export default function ComplaintsPage() {
   const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
   const currentUser = storedUser ? JSON.parse(storedUser) : null;
 
-  // React hook form setup matching pattern in Rooms CRUD
+  // React hook form setup
   const {
     register,
     handleSubmit,
@@ -79,7 +80,6 @@ export default function ComplaintsPage() {
       queryClient.invalidateQueries({ queryKey: ["myComplaints", currentUser?.id] });
       setShowModal(false);
       reset();
-      alert("Complaint raised successfully.");
     },
     onError: (err: any) => {
       alert(err?.response?.data?.message || "Failed to submit complaint");
@@ -122,14 +122,22 @@ export default function ComplaintsPage() {
     );
   }
 
+  if (isError) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-red-500">
+        <p>Failed to load complaints. Please try again later.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-black">My Complaints</h1>
-          <p className="text-gray-500 mt-1 text-sm sm:text-base">
-            Track, manage, and submit hostel-related complaints.
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight">My Complaints</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Track, manage, and submit hostel-related maintenance or support tickets.
           </p>
         </div>
         <button
@@ -153,135 +161,128 @@ export default function ComplaintsPage() {
           ["RESOLVED", String(counts.resolved)],
         ].map(([label, value]) => (
           <div key={label} className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5">
-            <p className="text-xs text-gray-500">{label}</p>
-            <p className="text-xl sm:text-2xl font-bold mt-2">{value}</p>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">{label}</p>
+            <p className="text-xl sm:text-2xl font-bold mt-2 text-gray-900">{value}</p>
           </div>
         ))}
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
-        {/* LEFT: Complaints list */}
-        <div className="xl:col-span-2 space-y-4 sm:space-y-6">
-          <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-              <h3 className="font-semibold text-gray-700">My Complaints</h3>
-              <span className="text-xs text-gray-400">{complaints.length} total</span>
+      {/* Main Grid: list + detail sidebar */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-5 items-start">
+        
+        {/* Left: Complaints Ledger */}
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <div className="flex items-center">
+              <FileText size={14} className="text-gray-500 mr-2" />
+              <h2 className="text-sm font-semibold text-gray-700">Complaint Ledger</h2>
             </div>
-            <div className="divide-y divide-gray-100">
-              {complaints.map((c) => (
+            <span className="text-xs text-gray-400">{complaints.length} total</span>
+          </div>
+
+          <div className="divide-y divide-gray-100">
+            {complaints.length === 0 ? (
+              <div className="p-8 text-center text-gray-400">
+                <HelpCircle className="mx-auto mb-2 text-gray-300" size={32} />
+                <p className="text-xs">No complaints submitted yet.</p>
+              </div>
+            ) : (
+              complaints.map((c) => (
                 <div
                   key={c._id}
                   onClick={() => setSelected(c)}
-                  className={`p-4 sm:p-5 flex items-center justify-between cursor-pointer transition gap-3 ${
-                    selected?._id === c._id ? "bg-gray-50" : "hover:bg-gray-50"
+                  className={`p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 hover:bg-gray-50/50 cursor-pointer transition ${
+                    selected?._id === c._id ? "bg-gray-50" : ""
                   }`}
                 >
-                  <div className="flex flex-col gap-1 min-w-0">
-                    <span className="text-xs font-bold text-gray-400 uppercase truncate">
-                      {c.category || "General"} • {new Date(c.createdAt).toLocaleDateString("en-GB")}
-                    </span>
-                    <h4 className="text-sm sm:text-base font-semibold text-gray-900 truncate">{c.title}</h4>
-                    <p className="text-xs text-gray-500 line-clamp-1">{c.description}</p>
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 font-semibold">{c.category || "General"}</span>
+                      {c.submittedByRole === "guardian" && (
+                        <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full shrink-0">
+                          Filed by Guardian
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-sm font-bold text-gray-900 truncate">{c.title}</h3>
+                    <p className="text-xs text-gray-400">Submitted: {new Date(c.createdAt).toLocaleDateString("en-GB")}</p>
                   </div>
-                  <StatusPill status={c.status} />
-                </div>
-              ))}
-              {complaints.length === 0 && (
-                <p className="py-10 text-center text-gray-400 text-sm">No complaints submitted yet.</p>
-              )}
-            </div>
-          </section>
 
-          {/* Detail Panel — shows inline on mobile below list */}
-          {selected && (
-            <section className="xl:hidden bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-4 border-b border-gray-200 bg-gray-50">
-                <h3 className="font-semibold text-gray-700">Complaint Details</h3>
-              </div>
-              <div className="p-4 sm:p-5 space-y-4">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Type / Category</p>
-                  <p className="text-sm font-semibold text-gray-900">{selected.category || "General"}</p>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <StatusPill status={c.status} />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Title</p>
-                  <p className="text-sm font-semibold text-gray-900">{selected.title}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Description</p>
-                  <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-4 leading-relaxed whitespace-pre-wrap">{selected.description}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Status</p>
-                  <StatusPill status={selected.status} />
-                </div>
-              </div>
-            </section>
-          )}
+              ))
+            )}
+          </div>
         </div>
 
-        {/* RIGHT sidebar */}
-        <div className="space-y-4 sm:space-y-6">
-          {/* Detail Panel — shows on xl only */}
-          {selected && (
-            <section className="hidden xl:block bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                <h3 className="font-semibold text-gray-700">Complaint Details</h3>
-                <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-650">
+        {/* Right: Detail Sidebar Panel + Emergency Support */}
+        <div className="space-y-5">
+          {selected ? (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm space-y-4">
+              <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-700">Complaint Details</span>
+                <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600">
                   <X size={15} />
                 </button>
               </div>
-              <div className="p-5 space-y-4">
+              
+              <div className="px-5 pb-5 space-y-4">
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Type / Category</p>
-                  <p className="text-sm font-semibold text-gray-900">{selected.category || "General"}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">Category</p>
+                  <p className="text-xs font-bold text-gray-800 mt-0.5">{selected.category || "General"}</p>
                 </div>
+
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Title</p>
-                  <p className="text-sm font-semibold text-gray-900">{selected.title}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">Filed By</p>
+                  <p className="text-xs font-bold text-gray-800 mt-0.5">
+                    {selected.submittedByRole === "guardian" ? "Guardian" : "Student"}
+                  </p>
                 </div>
+
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Description</p>
-                  <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-4 leading-relaxed whitespace-pre-wrap">{selected.description}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">Title</p>
+                  <p className="text-sm font-bold text-gray-900 mt-0.5">{selected.title}</p>
                 </div>
+
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Status</p>
-                  <StatusPill status={selected.status} />
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">Description</p>
+                  <p className="text-xs text-gray-600 leading-relaxed mt-1 whitespace-pre-wrap">{selected.description}</p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">Status</p>
+                  <div className="mt-1">
+                    <StatusPill status={selected.status} />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">Submission Date</p>
+                  <p className="text-xs font-bold text-gray-800 mt-0.5">{new Date(selected.createdAt).toLocaleDateString("en-GB")}</p>
                 </div>
               </div>
-            </section>
+            </div>
+          ) : (
+            <div className="hidden xl:block bg-white border border-gray-200 rounded-2xl p-5 text-center text-gray-400">
+              <MessageSquareWarning className="mx-auto mb-2 text-gray-300" size={32} />
+              <p className="text-xs">Select a complaint ticket from the ledger to view details.</p>
+            </div>
           )}
 
-          {/* Quick Actions */}
-          <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-gray-200 bg-gray-50">
-              <h3 className="font-semibold text-gray-700">Quick Actions</h3>
+          {/* Emergency Contacts */}
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
+              <h3 className="text-sm font-semibold text-gray-700">Emergency Support</h3>
             </div>
-            <div className="p-4 sm:p-5 space-y-3">
-              <button
-                onClick={() => {
-                  reset();
-                  setShowModal(true);
-                }}
-                className="w-full border border-black rounded-xl py-2 text-sm hover:bg-gray-50 transition font-medium"
-              >
-                Raise Complaint
-              </button>
+            <div className="p-5">
+              <p className="text-xs text-gray-500 mb-1">For urgent hostel issues contact Warden:</p>
+              <p className="text-base font-bold text-gray-950">+977 9863564357</p>
             </div>
-          </section>
-
-          {/* Emergency */}
-          <section className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-gray-200 bg-gray-50">
-              <h3 className="font-semibold text-gray-700">Emergency</h3>
-            </div>
-            <div className="p-4 sm:p-5">
-              <p className="text-sm text-gray-500 mb-2">For urgent issues contact Warden:</p>
-              <p className="text-lg font-bold text-gray-950">+977 9863564357</p>
-            </div>
-          </section>
+          </div>
         </div>
+
       </div>
 
       {/* Raise Complaint Modal */}
@@ -309,7 +310,11 @@ export default function ComplaintsPage() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-white"
                 >
                   <option value="">Select type...</option>
-                  {complaintTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                  {complaintTypes.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
                 </select>
                 {errors.category && (
                   <p className="text-red-500 text-xs mt-1">{errors.category.message}</p>
@@ -353,7 +358,7 @@ export default function ComplaintsPage() {
                 disabled={createMutation.isPending}
                 className="px-5 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-900 transition disabled:opacity-50"
               >
-                {createMutation.isPending ? "Submitting..." : "Submit"}
+                {createMutation.isPending ? "Submitting..." : "Submit Complaint"}
               </button>
             </div>
           </form>

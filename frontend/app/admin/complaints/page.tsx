@@ -17,6 +17,7 @@ type Complaint = {
   description: string;
   status: "Pending" | "In Progress" | "Resolved";
   category?: string;
+  submittedByRole?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -177,8 +178,14 @@ export default function ComplaintsPage() {
                     {c.category || "General"} • {new Date(c.createdAt).toLocaleDateString("en-GB")}
                   </span>
                   <p className="font-semibold text-sm text-gray-900 truncate">{c.title}</p>
-                  <p className="text-xs text-gray-500">Student: <span className="font-medium text-gray-700">{c.student?.full_name || "Unknown"}</span></p>
-                  <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{c.description}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-gray-500">Student: <span className="font-medium text-gray-700">{c.student?.full_name || "Unknown"}</span></p>
+                    {c.submittedByRole === "guardian" && (
+                      <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">
+                        Filed by Guardian
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <StatusPill status={c.status} />
@@ -218,8 +225,14 @@ export default function ComplaintsPage() {
                   <p className="text-xs text-gray-400">{selected.student?.email} • {selected.student?.phone}</p>
                 </div>
                 <div>
+                  <p className="text-xs text-gray-500">Filed By</p>
+                  <p className="text-xs font-bold text-gray-800 mt-0.5">
+                    {selected.submittedByRole === "guardian" ? "Guardian" : "Student"}
+                  </p>
+                </div>
+                <div>
                   <p className="text-xs text-gray-500">Category</p>
-                  <p className="font-semibold text-gray-900">{selected.category || "General"}</p>
+                  <p className="text-xs font-bold text-gray-800 mt-0.5">{selected.category || "General"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Title</p>

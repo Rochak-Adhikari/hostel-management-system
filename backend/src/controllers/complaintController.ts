@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import Complaint from "../models/Complaint";
+import User from "../models/user";
 import { AppError } from "../middleware/errorhandlermiddleware";
 import { ErrorCodes, Role } from "../types/enum";
 import { assertCanAccessStudent } from "../middleware/authMiddleware";
@@ -10,8 +11,22 @@ export const createComplaint = async (req: Request, res: Response, next: NextFun
   try {
     const { student, title, description, category } = req.body;
 
-    // student aafai halda aafno id matra prayog huncha; admin le aru ko lagi halna sakxa
-    const owner = req.user?.role === Role.ADMIN ? student : req.user?.id;
+    let owner: any;
+    let submittedByRole = "student";
+    if (req.user?.role === Role.ADMIN) {
+      owner = student;
+      submittedByRole = "admin";
+    } else if (req.user?.role === Role.GUARDIAN) {
+      const guardianUser = await User.findById(req.user.id).select("linked_student");
+      if (!guardianUser?.linked_student) {
+        throw new AppError("Guardian has no linked student", 400, ErrorCodes.VALIDATION_ERROR);
+      }
+      owner = guardianUser.linked_student;
+      submittedByRole = "guardian";
+    } else {
+      owner = req.user?.id;
+      submittedByRole = "student";
+    }
 
     if (!owner || !title || !description) {
       throw new AppError(
@@ -26,6 +41,7 @@ export const createComplaint = async (req: Request, res: Response, next: NextFun
       title,
       description,
       category,
+      submittedByRole,
     });
 
     await complaint.save();
@@ -88,6 +104,9 @@ export const getComplaintById = async (req: Request, res: Response, next: NextFu
 export const getComplaintsByStudent = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { studentId } = req.params;
+
+    // Guardian ra Student ko ownership authorization check
+    await assertCanAccessStudent(req, studentId);
 
     const complaints = await Complaint.find({ student: studentId }).populate("student", "full_name email");
 

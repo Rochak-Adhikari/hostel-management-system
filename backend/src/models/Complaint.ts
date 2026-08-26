@@ -39,6 +39,13 @@ const complaintSchema = new mongoose.Schema(
       required: false,
       trim: true,
     },
+
+    // complaint kasle haleko ho (student, guardian, admin)
+    submittedByRole: {
+      type: String,
+      enum: ["student", "guardian", "admin"],
+      default: "student",
+    },
   },
   { timestamps: true } // automatically createdAt ra updatedAt date handle garna
 );
