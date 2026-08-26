@@ -10,6 +10,7 @@ import {
   MessageSquareWarning,
   Clock,
   ArrowRightLeft,
+  CalendarDays,
   Settings,
   LogOut,
   Menu,
@@ -19,7 +20,7 @@ import {
 const navLinks = [
   { name: "Dashboard", href: "/guardian/dashboard", icon: LayoutDashboard },
   { name: "Payments", href: "/guardian/payments", icon: CreditCard },
-  { name: "Entry/Exit & Leaves", href: "/guardian/leaves", icon: Clock },
+  { name: "Leave Requests", href: "/guardian/leave-requests", icon: CalendarDays },
   { name: "Complaints", href: "/guardian/complaints", icon: MessageSquareWarning },
   { name: "Room Requests", href: "/guardian/room-requests", icon: ArrowRightLeft },
 ];

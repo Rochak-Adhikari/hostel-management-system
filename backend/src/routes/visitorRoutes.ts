@@ -7,12 +7,12 @@ const router = express.Router();
 
 router.use(authenticate());
 
-// visitor log gate/admin le rakhne
-router.post("/", authorize(Role.ADMIN), createVisitor);
+// visitor log entry create garna ko lagi
+router.post("/", createVisitor);
 router.get("/", authorize(Role.ADMIN), getALLVisitors);
 router.get("/student/:studentId", authorizeStudentScope(), getVisitorsByStudent);
 router.get("/:id", authorize(Role.ADMIN), getVisitorByID);
-router.put("/:id", authorize(Role.ADMIN), updateVisitor);
+router.put("/:id", updateVisitor);
 router.delete("/:id", authorize(Role.ADMIN), deleteVisitor);
 
 export default router;

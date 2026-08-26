@@ -16,6 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getAllocationByStudent } from "@/api/allocationapi";
 import { getRoomById } from "@/api/roomapi";
 import { getComplaintsByStudent } from "@/api/complaintapi";
+import { getAllNotices } from "@/api/noticeapi";
 
 // ── Static data (backend nabaneko modules ko lagi - Fee, Complaint, Visitor, Notice) ──
 const feeData = {
@@ -79,6 +80,13 @@ export default function DashboardPage() {
   const complaintsInProgress = myComplaints.filter((c: any) => c.status === "In Progress").length;
   const complaintsResolved = myComplaints.filter((c: any) => c.status === "Resolved").length;
   const recentComplaints = [...myComplaints].reverse().slice(0, 3);
+
+  // Real notices fetching
+  const { data: noticesDataRes } = useQuery({
+    queryKey: ["notices"],
+    queryFn: getAllNotices,
+  });
+  const liveNotices: any[] = noticesDataRes?.data ?? [];
 
   const firstName = currentUser?.full_name?.split(" ")[0] ?? "Student";
 
@@ -334,44 +342,52 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Notice Board - MOCK, Notice module not built yet ── */}
+      {/* ── Notice Board - REAL DATA ── */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell size={14} className="text-gray-500" />
             <h2 className="text-sm font-semibold text-gray-700">Notice Board</h2>
-            <span className="text-[10px] bg-gray-900 text-white font-bold px-2 py-0.5 rounded-full">{notices.length}</span>
+            <span className="text-[10px] bg-gray-900 text-white font-bold px-2 py-0.5 rounded-full">{liveNotices.length}</span>
           </div>
           <Link href="/student/notices" className="text-[11px] text-gray-500 hover:text-gray-800 underline underline-offset-2">
             View all ↗
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-          <div className="divide-y divide-gray-100">
-            {notices.slice(0, 2).map((n) => (
-              <div key={n.id} className="px-5 py-4">
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <p className="text-sm font-semibold text-gray-900 leading-snug">{n.title}</p>
-                  <Bell size={12} className="text-gray-300 shrink-0 mt-0.5" />
+        {liveNotices.length === 0 ? (
+          <div className="p-5 text-center text-xs text-gray-400">No notices posted yet.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+            <div className="divide-y divide-gray-100">
+              {liveNotices.slice(0, 2).map((n) => (
+                <div key={n._id} className="px-5 py-4">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="text-sm font-semibold text-gray-900 leading-snug">{n.title}</p>
+                    <Bell size={12} className="text-gray-300 shrink-0 mt-0.5" />
+                  </div>
+                  <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{n.content}</p>
+                  <p className="text-[10px] text-gray-400 mt-2">
+                    Posted: {new Date(n.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500 leading-relaxed">{n.content}</p>
-                <p className="text-[10px] text-gray-400 mt-2">Posted: {n.date}</p>
-              </div>
-            ))}
-          </div>
-          <div className="divide-y divide-gray-100">
-            {notices.slice(2).map((n) => (
-              <div key={n.id} className="px-5 py-4">
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <p className="text-sm font-semibold text-gray-900 leading-snug">{n.title}</p>
-                  <Bell size={12} className="text-gray-300 shrink-0 mt-0.5" />
+              ))}
+            </div>
+            <div className="divide-y divide-gray-100">
+              {liveNotices.slice(2, 4).map((n) => (
+                <div key={n._id} className="px-5 py-4">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="text-sm font-semibold text-gray-900 leading-snug">{n.title}</p>
+                    <Bell size={12} className="text-gray-300 shrink-0 mt-0.5" />
+                  </div>
+                  <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{n.content}</p>
+                  <p className="text-[10px] text-gray-400 mt-2">
+                    Posted: {new Date(n.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500 leading-relaxed">{n.content}</p>
-                <p className="text-[10px] text-gray-400 mt-2">Posted: {n.date}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
     </div>

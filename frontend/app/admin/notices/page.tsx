@@ -1,46 +1,161 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, X, Bell } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Bell } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { getAllNotices, createNotice, updateNotice, deleteNotice } from "@/api/noticeapi";
 
 type Notice = {
-  id: string;
-  noticeId: string;
+  _id: string;
   title: string;
   content: string;
-  postedDate: string;
   postedBy: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
-const initialNotices: Notice[] = [
-  { id: "NOT-001", noticeId: "NOT-001", title: "Visitor Timing Update", content: "Visitor hours have been revised. Morning: 10:00 AM – 12:00 PM. Evening: 4:00 PM – 7:00 PM. All visitors must register at the front desk.", postedDate: "28 Jun 2026", postedBy: "Admin" },
-  { id: "NOT-002", noticeId: "NOT-002", title: "Water Supply Interruption", content: "Water supply will be interrupted on 2 July 2026 from 9:00 AM to 1:00 PM due to maintenance work in the main pipeline.", postedDate: "27 Jun 2026", postedBy: "Admin" },
-  { id: "NOT-003", noticeId: "NOT-003", title: "Fee Payment Deadline", content: "All students must clear their hostel fee dues before 15 July 2026. Late payments will attract a penalty of Rs. 500 per week.", postedDate: "25 Jun 2026", postedBy: "Admin" },
-  { id: "NOT-004", noticeId: "NOT-004", title: "Hostel Inspection Notice", content: "A general room inspection will be conducted on 5 July 2026. Please ensure rooms are clean, tidy, and personal belongings are organised.", postedDate: "22 Jun 2026", postedBy: "Admin" },
-  { id: "NOT-005", noticeId: "NOT-005", title: "Mess Menu Change", content: "The mess menu has been updated effective 1 July 2026. A printed copy is available at the hostel notice board near the main entrance.", postedDate: "20 Jun 2026", postedBy: "Admin" },
-];
+// Notice form ko validation schema
+const noticeSchema = yup.object({
+  title: yup.string().required("Notice title is required"),
+  content: yup.string().required("Notice content is required"),
+});
+
+type NoticeFormValues = yup.InferType<typeof noticeSchema>;
+
+type ModalMode = "add" | "edit" | null;
 
 export default function AdminNoticesPage() {
-  const [notices, setNotices] = useState<Notice[]>(initialNotices);
-  const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ title: "", content: "" });
+  const queryClient = useQueryClient();
+  const [modal, setModal] = useState<ModalMode>(null);
+  const [selected, setSelected] = useState<Notice | null>(null);
 
-  function handleDelete(id: string) {
-    if (confirm("Delete this notice?")) {
-      setNotices((prev) => prev.filter((n) => n.id !== id));
+  // localStorage bata login gargda save vaisako user info nikalne
+  const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+  const currentUser = storedUser ? JSON.parse(storedUser) : null;
+
+  // React hook form setup
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<NoticeFormValues>({
+    resolver: yupResolver(noticeSchema),
+    defaultValues: {
+      title: "",
+      content: "",
+    },
+  });
+
+  // Sabai notice fetch garne
+  const { data: noticesRes, isPending, isError } = useQuery({
+    queryKey: ["notices"],
+    queryFn: getAllNotices,
+  });
+  const notices: Notice[] = noticesRes?.data ?? [];
+
+  // Create notice mutation
+  const createMutation = useMutation({
+    mutationFn: (newNotice: any) => createNotice(newNotice),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notices"] });
+      closeModal();
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || "Failed to post notice");
+    },
+  });
+
+  // Update notice mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => updateNotice(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notices"] });
+      closeModal();
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || "Failed to update notice");
+    },
+  });
+
+  // Delete notice mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteNotice(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notices"] });
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || "Failed to delete notice");
+    },
+  });
+
+  function openAdd() {
+    reset({ title: "", content: "" });
+    setSelected(null);
+    setModal("add");
+  }
+
+  function openEdit(notice: Notice) {
+    setSelected(notice);
+    setValue("title", notice.title);
+    setValue("content", notice.content);
+    setModal("edit");
+  }
+
+  function closeModal() {
+    setModal(null);
+    setSelected(null);
+    reset();
+  }
+
+  function onSubmit(formData: NoticeFormValues) {
+    if (modal === "add") {
+      createMutation.mutate({
+        title: formData.title,
+        content: formData.content,
+        postedBy: currentUser?.id || currentUser?._id,
+      });
+    } else if (modal === "edit" && selected) {
+      updateMutation.mutate({
+        id: selected._id,
+        data: {
+          title: formData.title,
+          content: formData.content,
+        },
+      });
     }
   }
 
-  function handlePost() {
-    if (!form.title.trim() || !form.content.trim()) return;
-    const newId = `NOT-${String(notices.length + 1).padStart(3, "0")}`;
-    const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-    setNotices((prev) => [
-      { id: newId, noticeId: newId, title: form.title, content: form.content, postedDate: today, postedBy: "Admin" },
-      ...prev,
-    ]);
-    setModal(false);
-    setForm({ title: "", content: "" });
+  function handleDelete(id: string) {
+    if (confirm("Are you sure you want to delete this notice?")) {
+      deleteMutation.mutate(id);
+    }
+  }
+
+  const currentMonthNotices = notices.filter((n) => {
+    const d = new Date(n.createdAt);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+
+  if (isPending) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+        <p className="text-gray-500">Loading notices...</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-red-500">
+        <p>Failed to load notices. Please try again later.</p>
+      </div>
+    );
   }
 
   return (
@@ -52,7 +167,7 @@ export default function AdminNoticesPage() {
           <p className="text-gray-500 mt-1">Post and manage official hostel notices for all students.</p>
         </div>
         <button
-          onClick={() => { setForm({ title: "", content: "" }); setModal(true); }}
+          onClick={openAdd}
           className="flex items-center gap-2 bg-black text-white px-5 py-2.5 rounded-xl font-medium hover:bg-gray-900 transition"
         >
           <Plus size={16} />
@@ -64,7 +179,7 @@ export default function AdminNoticesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {[
           ["TOTAL NOTICES", String(notices.length)],
-          ["POSTED THIS MONTH", String(notices.filter((n) => n.postedDate.includes("Jun 2026") || n.postedDate.includes("Jul 2026")).length)],
+          ["POSTED THIS MONTH", String(currentMonthNotices)],
         ].map(([label, value]) => (
           <div key={label} className="bg-white border border-gray-200 rounded-xl p-5">
             <p className="text-xs text-gray-500 uppercase tracking-wider">{label}</p>
@@ -82,7 +197,7 @@ export default function AdminNoticesPage() {
 
         <div className="divide-y divide-gray-100">
           {notices.map((n) => (
-            <div key={n.id} className="p-5 flex items-start justify-between gap-4 hover:bg-gray-50 transition">
+            <div key={n._id} className="p-5 flex items-start justify-between gap-4 hover:bg-gray-50 transition">
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
                   <Bell size={15} className="text-[#CB30E0]" />
@@ -91,19 +206,27 @@ export default function AdminNoticesPage() {
                   <p className="font-semibold text-sm">{n.title}</p>
                   <p className="text-sm text-gray-500 mt-1 line-clamp-2">{n.content}</p>
                   <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                    <span>Posted: {n.postedDate}</span>
-                    <span>•</span>
-                    <span>By: {n.postedBy}</span>
+                    <span>Posted: {new Date(n.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => handleDelete(n.id)}
-                className="p-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition shrink-0"
-                title="Delete notice"
-              >
-                <Trash2 size={14} />
-              </button>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => openEdit(n)}
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 transition text-gray-600"
+                  title="Edit notice"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  onClick={() => handleDelete(n._id)}
+                  className="p-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition"
+                  title="Delete notice"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           ))}
           {notices.length === 0 && (
@@ -112,13 +235,18 @@ export default function AdminNoticesPage() {
         </div>
       </div>
 
-      {/* Post Notice Modal */}
+      {/* Add / Edit Notice Modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="bg-white rounded-2xl w-full max-w-lg shadow-xl"
+          >
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-lg font-bold">Post New Notice</h2>
-              <button onClick={() => setModal(false)} className="p-1 rounded hover:bg-gray-100">
+              <h2 className="text-lg font-bold">
+                {modal === "add" ? "Post New Notice" : "Edit Notice"}
+              </h2>
+              <button type="button" onClick={closeModal} className="p-1 rounded hover:bg-gray-100">
                 <X size={18} />
               </button>
             </div>
@@ -128,27 +256,45 @@ export default function AdminNoticesPage() {
                 <input
                   type="text"
                   placeholder="e.g. Fee Payment Reminder"
-                  value={form.title}
-                  onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                  {...register("title")}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black"
                 />
+                {errors.title && (
+                  <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Content</label>
                 <textarea
                   rows={5}
                   placeholder="Write the full notice content here..."
-                  value={form.content}
-                  onChange={(e) => setForm((prev) => ({ ...prev, content: e.target.value }))}
+                  {...register("content")}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-black resize-none"
                 />
+                {errors.content && (
+                  <p className="text-red-500 text-xs mt-1">{errors.content.message}</p>
+                )}
               </div>
             </div>
             <div className="p-6 pt-0 flex gap-3 justify-end">
-              <button onClick={() => setModal(false)} className="px-5 py-2 border border-gray-300 rounded-xl text-sm hover:bg-gray-50 transition">Cancel</button>
-              <button onClick={handlePost} className="px-5 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-900 transition">Post Notice</button>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="px-5 py-2 border border-gray-300 rounded-xl text-sm hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="px-5 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-900 transition disabled:opacity-50"
+              >
+                {modal === "add"
+                  ? createMutation.isPending ? "Posting..." : "Post Notice"
+                  : updateMutation.isPending ? "Saving..." : "Save Changes"}
+              </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </div>

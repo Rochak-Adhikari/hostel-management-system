@@ -23,6 +23,7 @@ import noticeRoutes from "./routes/noticeRoutes";
 import visitorRoutes from "./routes/visitorRoutes";
 import feeRoutes from "./routes/feeRoutes";
 import roomChangeRequestRoutes from "./routes/roomChangeRequestRoutes";
+import leaveRequestRoutes from "./routes/leaveRequestRoutes";
 
 
 
@@ -68,6 +69,7 @@ app.use("/api/v1/notices", noticeRoutes);
 app.use("/api/v1/visitors", visitorRoutes);
 app.use("/api/v1/fees", feeRoutes);
 app.use("/api/v1/room-change-requests", roomChangeRequestRoutes);
+app.use("/api/v1/leave-requests", leaveRequestRoutes);
 
 // path not found error ko lagi
 app.use((req: Request, res: Response, next: NextFunction) => {

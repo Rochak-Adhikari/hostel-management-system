@@ -35,6 +35,8 @@ export enum ErrorCodes {
   ROOM_CHANGE_REQUEST_ALREADY_EXISTS = "Room Change Request Already Exists",
   ROOM_CHANGE_REQUEST_NOT_AVAILABLE = "Room Change Request Not Available",
   ROOM_CHANGE_REQUEST_FULL = "Room Change Request Full",
+  LEAVE_REQUEST_NOT_FOUND = "Leave Request Not Found",
+  LEAVE_REQUEST_ALREADY_EXISTS = "Leave Request Already Exists",
 }
 
 export enum RoomType {
@@ -63,6 +65,12 @@ export enum ComplaintStatus {
   RESOLVED = "Resolved",
 }
 export enum RoomChangeStatus {
+  PENDING = "Pending",
+  APPROVED = "Approved",
+  REJECTED = "Rejected",
+}
+
+export enum LeaveStatus {
   PENDING = "Pending",
   APPROVED = "Approved",
   REJECTED = "Rejected",

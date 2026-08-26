@@ -4,7 +4,7 @@ const allocationSchema = new mongoose.Schema(
   {
     student: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",        // your student/user model is registered as "User" in user.ts
+      ref: "User",       
       required: [true, "Student is required"],
     },
     room: {
